@@ -19,6 +19,7 @@ namespace gazellemq::server {
             ClientConnectEvent_Disconnected,
             ClientConnectEvent_SetNonblockingPublisher,
             ClientConnectEvent_ReceiveIntent,
+            ClientConnectEvent_ReceiveName,
         };
 
         ClientConnectEvent m_event{ClientConnectEvent_NotSet};
@@ -114,11 +115,46 @@ namespace gazellemq::server {
                 } else {
                     // check if this is a subscriber or publisher
                     if (intent == PUBLISHER_INTENT) {
-                        printf("Publisher connected\n");
+                        this->handler = new MessagePublisher();
                     } else if (intent == SUBSCRIBER_INTENT) {
-                        printf("Subscriber connected\n");
+                        this->handler = new MessageSubscriber();
                     }
+
+                    // now receive the name from the client
+                    memset(readBuffer, 0, MAX_READ_BUF);
+                    beginReceiveName(ring);
                 }
+            }
+        }
+
+        /**
+         * Receives the name from the client
+         * @param ring
+         */
+        void beginReceiveName(struct io_uring *ring) {
+            io_uring_sqe* sqe = io_uring_get_sqe(ring);
+            io_uring_prep_recv(sqe, fd, readBuffer, MAX_READ_BUF, 0);
+            io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
+
+            m_event = ClientConnectEvent_ReceiveName;
+            io_uring_submit(ring);
+        }
+
+        /**
+         * Checks if we are done receiving the name
+         * @param ring
+         * @param res
+         */
+        void onReceiveNameComplete(struct io_uring *ring, int res) {
+            handler->clientName.append(readBuffer, res);
+            if (handler->clientName.ends_with("\r")) {
+                handler->clientName.erase(handler->clientName.size() - 1, 1);
+                handler->printHello();
+
+                // TODO
+
+            } else {
+                beginReceiveName(ring);
             }
         }
 
@@ -130,8 +166,8 @@ namespace gazellemq::server {
                 case ClientConnectEvent_ReceiveIntent:
                     onIntentReceived(ring, res);
                     break;
-                case ClientConnectEvent_Disconnected:
-
+                case ClientConnectEvent_ReceiveName:
+                    onReceiveNameComplete(ring, res);
                     break;
                 default:
                     break;

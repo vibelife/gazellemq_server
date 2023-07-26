@@ -6,7 +6,12 @@
 namespace gazellemq::server {
     class MessagePublisher : public MessageHandler {
     public:
-        virtual ~MessagePublisher() = default;
+        ~MessagePublisher() override = default;
+
+        void printHello() override {
+            printf("Publisher connected - %s\n", clientName.c_str());
+        }
+
         void handleEvent(struct io_uring *ring, int res) override {
 
         }

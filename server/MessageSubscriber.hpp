@@ -6,7 +6,12 @@
 namespace gazellemq::server {
     class MessageSubscriber : public MessageHandler {
     public:
-        virtual ~MessageSubscriber() = default;
+        ~MessageSubscriber() override = default;
+
+        void printHello() override {
+            printf("Subscriber connected - %s\n", clientName.c_str());
+        }
+
         void handleEvent(struct io_uring *ring, int res) override {
 
         }
