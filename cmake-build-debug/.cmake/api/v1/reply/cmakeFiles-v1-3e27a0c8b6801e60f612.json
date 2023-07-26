@@ -175,8 +175,8 @@
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "/home/dre/CLionProjects/gazellemq/cmake-build-debug",
-		"source" : "/home/dre/CLionProjects/gazellemq"
+		"build" : "/home/dre/CLionProjects/gazellemq_server/cmake-build-debug",
+		"source" : "/home/dre/CLionProjects/gazellemq_server"
 	},
 	"version" : 
 	{

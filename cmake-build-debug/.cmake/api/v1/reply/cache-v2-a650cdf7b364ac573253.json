@@ -67,7 +67,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/dre/CLionProjects/gazellemq/cmake-build-debug"
+			"value" : "/home/dre/CLionProjects/gazellemq_server/cmake-build-debug"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -555,7 +555,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/dre/CLionProjects/gazellemq/cmake-build-debug/CMakeFiles/pkgRedirects"
+			"value" : "/home/dre/CLionProjects/gazellemq_server/cmake-build-debug/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -627,7 +627,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/dre/CLionProjects/gazellemq"
+			"value" : "/home/dre/CLionProjects/gazellemq_server"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -867,7 +867,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "gazellemq"
+			"value" : "gazellemq_server"
 		},
 		{
 			"name" : "CMAKE_RANLIB",
@@ -1683,7 +1683,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/dre/CLionProjects/gazellemq/cmake-build-debug"
+			"value" : "/home/dre/CLionProjects/gazellemq_server/cmake-build-debug"
 		},
 		{
 			"name" : "gazellemq_IS_TOP_LEVEL",
@@ -1707,7 +1707,43 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/dre/CLionProjects/gazellemq"
+			"value" : "/home/dre/CLionProjects/gazellemq_server"
+		},
+		{
+			"name" : "gazellemq_server_BINARY_DIR",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "Value Computed by CMake"
+				}
+			],
+			"type" : "STATIC",
+			"value" : "/home/dre/CLionProjects/gazellemq_server/cmake-build-debug"
+		},
+		{
+			"name" : "gazellemq_server_IS_TOP_LEVEL",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "Value Computed by CMake"
+				}
+			],
+			"type" : "STATIC",
+			"value" : "ON"
+		},
+		{
+			"name" : "gazellemq_server_SOURCE_DIR",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "Value Computed by CMake"
+				}
+			],
+			"type" : "STATIC",
+			"value" : "/home/dre/CLionProjects/gazellemq_server"
 		},
 		{
 			"name" : "pkgcfg_lib_URING_uring",

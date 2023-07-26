@@ -5,7 +5,8 @@
 
 namespace gazellemq::server {
     class MessageHandler : public EventLoopObject {
-
+    public:
+        virtual ~MessageHandler() = default;
     };
 }
 

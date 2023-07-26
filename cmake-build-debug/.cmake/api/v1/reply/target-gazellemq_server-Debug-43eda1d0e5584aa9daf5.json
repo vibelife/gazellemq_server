@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "gazellemq"
+			"path" : "gazellemq_server"
 		}
 	],
 	"backtrace" : 1,
@@ -63,7 +63,7 @@
 			]
 		}
 	],
-	"id" : "gazellemq::@6890427a1f51a3e7e1df",
+	"id" : "gazellemq_server::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -89,8 +89,8 @@
 		],
 		"language" : "CXX"
 	},
-	"name" : "gazellemq",
-	"nameOnDisk" : "gazellemq",
+	"name" : "gazellemq_server",
+	"nameOnDisk" : "gazellemq_server",
 	"paths" : 
 	{
 		"build" : ".",

@@ -103,7 +103,7 @@ namespace gazellemq::server {
                     if (ret == TIMEOUT) {
                         continue;
                     } else {
-                        printError("io_uring_wait_cqe_nr(...)", ret);
+                        printError("io_uring_wait_cqe_timeout(...)", ret);
                         return;
                     }
                 }

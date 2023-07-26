@@ -1,3 +1,3 @@
-/home/dre/CLionProjects/gazellemq/cmake-build-debug/CMakeFiles/gazellemq.dir
-/home/dre/CLionProjects/gazellemq/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/dre/CLionProjects/gazellemq/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/dre/CLionProjects/gazellemq_server/cmake-build-debug/CMakeFiles/gazellemq_server.dir
+/home/dre/CLionProjects/gazellemq_server/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/dre/CLionProjects/gazellemq_server/cmake-build-debug/CMakeFiles/rebuild_cache.dir

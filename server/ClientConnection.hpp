@@ -29,6 +29,10 @@ namespace gazellemq::server {
 
 
     public:
+        virtual ~ClientConnection() {
+            delete handler;
+        }
+
         void start(struct io_uring* ring, int epfd, int fileDescriptor) {
             this->fd = fileDescriptor;
             beginMakeNonblockingSocket(ring, epfd);

@@ -6,6 +6,7 @@
 namespace gazellemq::server {
     class MessageSubscriber : public MessageHandler {
     public:
+        virtual ~MessageSubscriber() = default;
         void handleEvent(struct io_uring *ring, int res) override {
 
         }

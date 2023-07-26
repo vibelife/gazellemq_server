@@ -11,7 +11,7 @@
 # =============================================================================
 
 # =============================================================================
-# Project: gazellemq
+# Project: gazellemq_server
 # Configurations: Debug
 # =============================================================================
 
@@ -39,45 +39,45 @@ include CMakeFiles/rules.ninja
 #############################################
 # Logical path to working directory; prefix for absolute paths.
 
-cmake_ninja_workdir = /home/dre/CLionProjects/gazellemq/cmake-build-debug/
+cmake_ninja_workdir = /home/dre/CLionProjects/gazellemq_server/cmake-build-debug/
 # =============================================================================
-# Object build statements for EXECUTABLE target gazellemq
+# Object build statements for EXECUTABLE target gazellemq_server
 
 
 #############################################
-# Order-only phony target for gazellemq
+# Order-only phony target for gazellemq_server
 
-build cmake_object_order_depends_target_gazellemq: phony || CMakeFiles/gazellemq.dir
+build cmake_object_order_depends_target_gazellemq_server: phony || CMakeFiles/gazellemq_server.dir
 
-build CMakeFiles/gazellemq.dir/main.cpp.o: CXX_COMPILER__gazellemq_Debug /home/dre/CLionProjects/gazellemq/main.cpp || cmake_object_order_depends_target_gazellemq
-  DEP_FILE = CMakeFiles/gazellemq.dir/main.cpp.o.d
+build CMakeFiles/gazellemq_server.dir/main.cpp.o: CXX_COMPILER__gazellemq_server_Debug /home/dre/CLionProjects/gazellemq_server/main.cpp || cmake_object_order_depends_target_gazellemq_server
+  DEP_FILE = CMakeFiles/gazellemq_server.dir/main.cpp.o.d
   FLAGS = -g -fdiagnostics-color=always -std=gnu++20
-  OBJECT_DIR = CMakeFiles/gazellemq.dir
-  OBJECT_FILE_DIR = CMakeFiles/gazellemq.dir
+  OBJECT_DIR = CMakeFiles/gazellemq_server.dir
+  OBJECT_FILE_DIR = CMakeFiles/gazellemq_server.dir
 
 
 # =============================================================================
-# Link build statements for EXECUTABLE target gazellemq
+# Link build statements for EXECUTABLE target gazellemq_server
 
 
 #############################################
-# Link the executable gazellemq
+# Link the executable gazellemq_server
 
-build gazellemq: CXX_EXECUTABLE_LINKER__gazellemq_Debug CMakeFiles/gazellemq.dir/main.cpp.o | /usr/lib/x86_64-linux-gnu/liburing.so /usr/lib/x86_64-linux-gnu/libanl.so
+build gazellemq_server: CXX_EXECUTABLE_LINKER__gazellemq_server_Debug CMakeFiles/gazellemq_server.dir/main.cpp.o | /usr/lib/x86_64-linux-gnu/liburing.so /usr/lib/x86_64-linux-gnu/libanl.so
   FLAGS = -g
   LINK_LIBRARIES = /usr/lib/x86_64-linux-gnu/liburing.so  /usr/lib/x86_64-linux-gnu/libanl.so
-  OBJECT_DIR = CMakeFiles/gazellemq.dir
+  OBJECT_DIR = CMakeFiles/gazellemq_server.dir
   POST_BUILD = :
   PRE_LINK = :
-  TARGET_FILE = gazellemq
-  TARGET_PDB = gazellemq.dbg
+  TARGET_FILE = gazellemq_server
+  TARGET_PDB = gazellemq_server.dbg
 
 
 #############################################
 # Utility command for edit_cache
 
 build CMakeFiles/edit_cache.util: CUSTOM_COMMAND
-  COMMAND = cd /home/dre/CLionProjects/gazellemq/cmake-build-debug && /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
+  COMMAND = cd /home/dre/CLionProjects/gazellemq_server/cmake-build-debug && /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
   DESC = No interactive CMake dialog available...
   restat = 1
 
@@ -88,7 +88,7 @@ build edit_cache: phony CMakeFiles/edit_cache.util
 # Utility command for rebuild_cache
 
 build CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
-  COMMAND = cd /home/dre/CLionProjects/gazellemq/cmake-build-debug && /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/bin/cmake --regenerate-during-build -S/home/dre/CLionProjects/gazellemq -B/home/dre/CLionProjects/gazellemq/cmake-build-debug
+  COMMAND = cd /home/dre/CLionProjects/gazellemq_server/cmake-build-debug && /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/bin/cmake --regenerate-during-build -S/home/dre/CLionProjects/gazellemq_server -B/home/dre/CLionProjects/gazellemq_server/cmake-build-debug
   DESC = Running CMake to regenerate build system...
   pool = console
   restat = 1
@@ -104,9 +104,9 @@ build rebuild_cache: phony CMakeFiles/rebuild_cache.util
 # =============================================================================
 
 #############################################
-# Folder: /home/dre/CLionProjects/gazellemq/cmake-build-debug
+# Folder: /home/dre/CLionProjects/gazellemq_server/cmake-build-debug
 
-build all: phony gazellemq
+build all: phony gazellemq_server
 
 # =============================================================================
 # Built-in targets
@@ -115,14 +115,14 @@ build all: phony gazellemq
 #############################################
 # Re-run CMake if any of its inputs changed.
 
-build build.ninja: RERUN_CMAKE | /home/dre/CLionProjects/gazellemq/CMakeLists.txt /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCXXInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCommonLanguageInclude.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeGenericSystem.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeInitializeConfigs.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeLanguageInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInitialize.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckCSourceCompiles.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckIncludeFile.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckLibraryExists.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-C.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-CXX.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPackageHandleStandardArgs.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPackageMessage.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPkgConfig.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindThreads.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Internal/CheckSourceCompiles.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-C.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-CXX.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/UnixPaths.cmake CMakeCache.txt CMakeFiles/3.24.2/CMakeCCompiler.cmake CMakeFiles/3.24.2/CMakeCXXCompiler.cmake CMakeFiles/3.24.2/CMakeSystem.cmake
+build build.ninja: RERUN_CMAKE | /home/dre/CLionProjects/gazellemq_server/CMakeLists.txt /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCXXInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCommonLanguageInclude.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeGenericSystem.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeInitializeConfigs.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeLanguageInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInitialize.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckCSourceCompiles.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckIncludeFile.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckLibraryExists.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-C.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-CXX.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPackageHandleStandardArgs.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPackageMessage.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPkgConfig.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindThreads.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Internal/CheckSourceCompiles.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-C.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-CXX.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/UnixPaths.cmake CMakeCache.txt CMakeFiles/3.24.2/CMakeCCompiler.cmake CMakeFiles/3.24.2/CMakeCXXCompiler.cmake CMakeFiles/3.24.2/CMakeSystem.cmake
   pool = console
 
 
 #############################################
 # A missing CMake input file is not an error.
 
-build /home/dre/CLionProjects/gazellemq/CMakeLists.txt /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCXXInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCommonLanguageInclude.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeGenericSystem.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeInitializeConfigs.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeLanguageInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInitialize.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckCSourceCompiles.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckIncludeFile.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckLibraryExists.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-C.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-CXX.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPackageHandleStandardArgs.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPackageMessage.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPkgConfig.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindThreads.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Internal/CheckSourceCompiles.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-C.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-CXX.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/UnixPaths.cmake CMakeCache.txt CMakeFiles/3.24.2/CMakeCCompiler.cmake CMakeFiles/3.24.2/CMakeCXXCompiler.cmake CMakeFiles/3.24.2/CMakeSystem.cmake: phony
+build /home/dre/CLionProjects/gazellemq_server/CMakeLists.txt /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCXXInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCommonLanguageInclude.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeGenericSystem.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeInitializeConfigs.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeLanguageInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInformation.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInitialize.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckCSourceCompiles.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckIncludeFile.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/CheckLibraryExists.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-C.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-CXX.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPackageHandleStandardArgs.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPackageMessage.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindPkgConfig.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/FindThreads.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Internal/CheckSourceCompiles.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-C.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-CXX.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux.cmake /home/dre/Downloads/CLion-2022.3.2/clion-2022.3.2/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/UnixPaths.cmake CMakeCache.txt CMakeFiles/3.24.2/CMakeCCompiler.cmake CMakeFiles/3.24.2/CMakeCXXCompiler.cmake CMakeFiles/3.24.2/CMakeSystem.cmake: phony
 
 
 #############################################

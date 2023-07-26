@@ -129,8 +129,6 @@ namespace gazellemq::server {
         ~ServerConnection() {
             std::for_each(clientConnections.begin(), clientConnections.end(), [](auto& o) {delete o;});
             clientConnections.clear();
-
-            delete handler;
         }
 
     public:
