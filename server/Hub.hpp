@@ -8,8 +8,8 @@
 #include <netinet/in.h>
 #include <cstring>
 
-#include "Publisher.hpp"
-#include "Subscriber.hpp"
+#include "MessagePublisher.hpp"
+#include "MessageSubscriber.hpp"
 #include "Consts.hpp"
 #include "EventLoopObject.hpp"
 #include "ServerConnection.hpp"
@@ -29,6 +29,9 @@ namespace gazellemq::server {
         void start(int port, size_t const queueDepth) {
             signal(SIGINT, sigintHandler);
             io_uring_queue_init(queueDepth, &ring, 0);
+
+            serverConnection = new ServerConnection{port};
+            serverConnection->handleEvent(&ring, 0);
 
             doEventLoop();
         }
@@ -98,7 +101,6 @@ namespace gazellemq::server {
 
                 if (ret < 0) {
                     if (ret == TIMEOUT) {
-                        // reconnectToSubscribers();
                         continue;
                     } else {
                         printError("io_uring_wait_cqe_nr(...)", ret);
@@ -115,7 +117,7 @@ namespace gazellemq::server {
                         }
 
                         auto* pObject = static_cast<EventLoopObject*>(io_uring_cqe_get_data(cqe));
-                        pObject->handleEvent(&ring);
+                        pObject->handleEvent(&ring, res);
                     }
                     io_uring_cqe_seen(&ring, cqe);
                 }

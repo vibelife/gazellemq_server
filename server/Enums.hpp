@@ -11,6 +11,7 @@ namespace gazellemq::server {
             Event_AcceptPublisherConnection,
             Event_SetNonblockingPublisher,
             Event_ReceiveIntent,
+            Event_Disconnected,
             Event_ReceivePublisherData,
         };
     };

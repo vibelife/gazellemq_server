@@ -26,14 +26,6 @@ namespace gazellemq::server {
 
     private:
         /**
-         * Error handler
-         * @param msg
-         */
-        static void printError(char const* msg, int err) {
-            printf("%s\n%s\n", msg, strerror(-err));
-        }
-
-        /**
          * Sets up the listening socket
          * @param ring
          * @return
@@ -121,51 +113,41 @@ namespace gazellemq::server {
             if (res < 0) {
                 printError(__PRETTY_FUNCTION__ , res);
             } else {
-                // A publisher has connected
-                auto* client = new ClientConnection();
-                client->fd = res;
-                clientConnections.emplace_back(client);
-            }
-        }
-
-        /**
-         * Sets the client connection to non blocking
-         * @param ring
-         * @param client
-         */
-        void beginMakeNonblockingSocket(struct io_uring* ring, ClientConnection* client) {
-            io_uring_sqe* sqe = io_uring_get_sqe(ring);
-            struct epoll_event ev{};
-            ev.events = EPOLLIN | EPOLLOUT;
-            ev.data.fd = client->fd;
-            io_uring_prep_epoll_ctl(sqe, epfd, client->fd, EPOLL_CTL_ADD, &ev);
-            io_uring_sqe_set_data(sqe, (EventLoopObject*)client);
-
-            client->event = Enums::Event::Event_SetNonblockingPublisher;
-            io_uring_submit(ring);
-        }
-
-        void onMakeNonblockingSocketComplete(struct io_uring* ring, ClientConnection* client, int res) {
-            if (res < 0) {
-                printError(__PRETTY_FUNCTION__ , res);
-                client->beginDisconnect(ring);
-            } else {
                 // listen for more connections
                 beginAcceptConnection(ring);
 
-                // client must communicate with server
-                client->beginReceiveIntent(ring);
+                // A publisher has connected
+                auto* client = new ClientConnection();
+                clientConnections.emplace_back(client);
+                client->start(ring, epfd, res);
             }
         }
+
     public:
+        ServerConnection(int port): port(port) {}
+
         ~ServerConnection() {
             std::for_each(clientConnections.begin(), clientConnections.end(), [](auto& o) {delete o;});
             clientConnections.clear();
+
+            delete handler;
         }
 
     public:
-        void handleEvent(struct io_uring *ring) override {
-
+        void handleEvent(struct io_uring *ring, int res) override {
+            switch (event) {
+                case Enums::Event::Event_NotSet:
+                    beginSetupListenerSocket(ring);
+                    break;
+                case Enums::Event::Event_SetupPublisherListeningSocket:
+                    onSetupListeningSocketComplete(ring, res);
+                    break;
+                case Enums::Event::Event_AcceptPublisherConnection:
+                    onAcceptConnectionComplete(ring, res);
+                    break;
+                default:
+                    break;
+            }
         }
     };
 }

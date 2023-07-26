@@ -3,7 +3,7 @@ project(gazellemq)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(${PROJECT_NAME} main.cpp lib/MPMCQueue/MPMCQueue.hpp server/Hub.hpp server/Subscriber.hpp server/Publisher.hpp server/ClientConnection.hpp server/Consts.hpp server/EventLoopObject.hpp server/ServerConnection.hpp server/Enums.hpp)
+add_executable(${PROJECT_NAME} main.cpp lib/MPMCQueue/MPMCQueue.hpp server/Hub.hpp server/MessageSubscriber.hpp server/MessagePublisher.hpp server/ClientConnection.hpp server/Consts.hpp server/EventLoopObject.hpp server/ServerConnection.hpp server/Enums.hpp server/MessageHandler.hpp)
 
 find_package(PkgConfig REQUIRED)
 
