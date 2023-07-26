@@ -114,9 +114,9 @@ namespace gazellemq::server {
                 } else {
                     // check if this is a subscriber or publisher
                     if (intent == PUBLISHER_INTENT) {
-                        printf("MessagePublisher connected\n");
+                        printf("Publisher connected\n");
                     } else if (intent == SUBSCRIBER_INTENT) {
-                        printf("MessageSubscriber connected\n");
+                        printf("Subscriber connected\n");
                     }
                 }
             }
