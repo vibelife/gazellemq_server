@@ -150,9 +150,7 @@ namespace gazellemq::server {
             if (handler->clientName.ends_with("\r")) {
                 handler->clientName.erase(handler->clientName.size() - 1, 1);
                 handler->printHello();
-
-                // TODO
-
+                handler->handleEvent(ring, 0);
             } else {
                 beginReceiveName(ring);
             }

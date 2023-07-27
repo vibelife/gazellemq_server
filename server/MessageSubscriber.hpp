@@ -6,6 +6,10 @@
 namespace gazellemq::server {
     class MessageSubscriber : public MessageHandler {
     public:
+        explicit MessageSubscriber(int fileDescriptor)
+                :MessageHandler(fileDescriptor)
+        {}
+
         ~MessageSubscriber() override = default;
 
         void printHello() override {

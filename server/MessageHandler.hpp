@@ -7,8 +7,13 @@ namespace gazellemq::server {
     class MessageHandler : public EventLoopObject {
     public:
         std::string clientName;
+        const int fd;
 
     public:
+        explicit MessageHandler(int fileDescriptor)
+                :fd(fileDescriptor)
+        {}
+
         virtual ~MessageHandler() = default;
         virtual void printHello() = 0;
     };
