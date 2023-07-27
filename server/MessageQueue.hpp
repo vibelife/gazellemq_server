@@ -7,15 +7,15 @@
 namespace gazellemq::server {
     class MessageQueue {
     private:
-        rigtorp::MPMCQueue<Message*> queue;
+        rigtorp::MPMCQueue<Message> queue;
     public:
         explicit MessageQueue(size_t queueDepth)
             :queue(queueDepth)
         {}
 
     public:
-        void push(Message* msg) {
-            queue.push(msg);
+        void push(Message&& msg) {
+            queue.push(std::move(msg));
         }
     };
 

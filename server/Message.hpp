@@ -3,7 +3,8 @@
 
 namespace gazellemq::server {
     struct Message {
-
+        std::string messageType;
+        std::string messageContent;
     };
 }
 

@@ -115,9 +115,9 @@ namespace gazellemq::server {
                 } else {
                     // check if this is a subscriber or publisher
                     if (intent == PUBLISHER_INTENT) {
-                        this->handler = new MessagePublisher();
+                        this->handler = new MessagePublisher(fd);
                     } else if (intent == SUBSCRIBER_INTENT) {
-                        this->handler = new MessageSubscriber();
+                        this->handler = new MessageSubscriber(fd);
                     }
 
                     // now receive the name from the client

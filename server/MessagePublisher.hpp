@@ -19,6 +19,22 @@ namespace gazellemq::server {
 
         MessagePublisherState state{MessagePublisherState_notSet};
 
+        enum ParseState {
+            ParseState_messageType,
+            ParseState_messageContentLength,
+            ParseState_messageContent,
+        };
+
+        ParseState parseState{ParseState_messageType};
+        Message currentMessage;
+
+        std::string messageType;
+        std::string messageContent;
+        std::string messageContentBuffer;
+        size_t messageContentLength;
+
+        size_t nbMessageBytesRead{};
+        size_t nbContentBytesRead{};
     private:
         /**
          * Receives data from the publisher
@@ -39,7 +55,68 @@ namespace gazellemq::server {
          * @param res
          */
         void onReceiveDataComplete(struct io_uring *ring, int res) {
-            content.append(readBuffer, res);
+            if (parseState == ParseState_messageContent) {
+                if (readRestOfBuffer(0, res)) {
+                    return;
+                }
+            } else {
+                for (size_t i{0}; i < res; ++i) {
+                    char ch {readBuffer[i]};
+                    ++nbMessageBytesRead;
+                    if (parseState == ParseState_messageType) {
+                        if (ch == '|') {
+                            parseState = ParseState_messageContentLength;
+                            continue;
+                        } else {
+                            currentMessage.messageType.push_back(ch);
+                        }
+                    } else if (parseState == ParseState_messageContentLength) {
+                        if (ch == '|') {
+                            messageContentLength = std::stoul(messageContentBuffer);
+                            parseState = ParseState_messageContent;
+                            continue;
+                        } else {
+                            messageContentBuffer.push_back(ch);
+                        }
+                    } else if (parseState == ParseState_messageContent) {
+                        if (!readRestOfBuffer(i, res - nbMessageBytesRead + 1)) {
+                            beginReceiveData(ring);
+                        }
+                        return;
+                    }
+                }
+            }
+
+            beginReceiveData(ring);
+        }
+
+        /**
+         * Reads the rest of readBuffer
+         * @param startPos
+         * @param nbChars
+         * @return returns true if parsing is done
+         */
+        bool readRestOfBuffer(size_t startPos, size_t nbChars) {
+            messageContent.append(&readBuffer[startPos], nbChars);
+
+            nbContentBytesRead += nbChars;
+            if ((nbContentBytesRead) == messageContentLength) {
+
+                getQueue().push(Message{
+                    std::move(messageType),
+                    std::move(messageContent),
+                });
+
+                messageContentLength = 0;
+                nbMessageBytesRead = 0;
+                messageContent.clear();
+                messageContentBuffer.clear();
+                messageType.clear();
+
+                return true;
+            }
+
+            return false;
         }
     public:
         explicit MessagePublisher(int fileDescriptor)
