@@ -109,6 +109,7 @@ namespace gazellemq::server {
 
                 messageContentLength = 0;
                 nbMessageBytesRead = 0;
+                nbContentBytesRead = 0;
                 messageContent.clear();
                 messageContentBuffer.clear();
                 messageType.clear();
