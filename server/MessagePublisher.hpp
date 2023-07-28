@@ -2,7 +2,7 @@
 #define GAZELLEMQ_MESSAGEPUBLISHER_HPP
 
 #include "MessageHandler.hpp"
-#include "MessageQueue.hpp"
+#include "PushService.hpp"
 
 #include "Consts.hpp"
 
@@ -26,7 +26,6 @@ namespace gazellemq::server {
         };
 
         ParseState parseState{ParseState_messageType};
-        Message currentMessage;
 
         std::string messageType;
         std::string messageContent;
@@ -68,7 +67,7 @@ namespace gazellemq::server {
                             parseState = ParseState_messageContentLength;
                             continue;
                         } else {
-                            currentMessage.messageType.push_back(ch);
+                            messageType.push_back(ch);
                         }
                     } else if (parseState == ParseState_messageContentLength) {
                         if (ch == '|') {
@@ -102,10 +101,7 @@ namespace gazellemq::server {
             nbContentBytesRead += nbChars;
             if ((nbContentBytesRead) == messageContentLength) {
 
-                getQueue().push(Message{
-                    std::move(messageType),
-                    std::move(messageContent),
-                });
+                getPushService().push(std::move(messageType), std::move(messageContent));
 
                 messageContentLength = 0;
                 nbMessageBytesRead = 0;
@@ -126,7 +122,7 @@ namespace gazellemq::server {
 
         ~MessagePublisher() override = default;
 
-        void printHello() override {
+        void printHello() const override {
             printf("Publisher connected - %s\n", clientName.c_str());
         }
 

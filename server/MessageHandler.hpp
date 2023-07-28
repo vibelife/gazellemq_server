@@ -15,7 +15,7 @@ namespace gazellemq::server {
         {}
 
         virtual ~MessageHandler() = default;
-        virtual void printHello() = 0;
+        virtual void printHello() const = 0;
     };
 }
 

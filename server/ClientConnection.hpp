@@ -118,6 +118,7 @@ namespace gazellemq::server {
                         this->handler = new MessagePublisher(fd);
                     } else if (intent == SUBSCRIBER_INTENT) {
                         this->handler = new MessageSubscriber(fd);
+                        getPushService().registerSubscriber(dynamic_cast<MessageSubscriber*>(this->handler));
                     }
 
                     // now receive the name from the client
