@@ -54,6 +54,8 @@ namespace gazellemq::server {
          * @param res
          */
         void onReceiveDataComplete(struct io_uring *ring, int res) {
+            nbMessageBytesRead = 0;
+
             if (parseState == ParseState_messageContent) {
                 if (readRestOfBuffer(0, res)) {
                     return;

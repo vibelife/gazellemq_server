@@ -28,6 +28,9 @@ namespace gazellemq::server {
 
         void start(int port, size_t const queueDepth) {
             signal(SIGINT, sigintHandler);
+
+            getPushService().start();
+
             io_uring_queue_init(queueDepth, &ring, 0);
 
             serverConnection = new ServerConnection{port};
@@ -84,9 +87,6 @@ namespace gazellemq::server {
          * Does the event loop
          */
         void doEventLoop() {
-            struct sockaddr_in clientAddr{};
-            socklen_t clientAddrLen = sizeof(clientAddr);
-
             std::vector<io_uring_cqe *> cqes{};
             cqes.reserve(NB_EVENTS);
             cqes.insert(cqes.begin(), NB_EVENTS, nullptr);
