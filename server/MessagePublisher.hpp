@@ -57,7 +57,7 @@ namespace gazellemq::server {
             nbMessageBytesRead = 0;
 
             if (parseState == ParseState_messageContent) {
-                if (readRestOfBuffer(0, res)) {
+                if (readRestOfBuffer(ring, 0, res)) {
                     return;
                 }
             } else {
@@ -80,7 +80,7 @@ namespace gazellemq::server {
                             messageContentBuffer.push_back(ch);
                         }
                     } else if (parseState == ParseState_messageContent) {
-                        if (!readRestOfBuffer(i, res - nbMessageBytesRead + 1)) {
+                        if (!readRestOfBuffer(ring, i, res - nbMessageBytesRead + 1)) {
                             beginReceiveData(ring);
                         }
                         return;
@@ -97,13 +97,13 @@ namespace gazellemq::server {
          * @param nbChars
          * @return returns true if parsing is done
          */
-        bool readRestOfBuffer(size_t startPos, size_t nbChars) {
+        bool readRestOfBuffer(struct io_uring *ring, size_t startPos, size_t nbChars) {
             messageContent.append(&readBuffer[startPos], nbChars);
 
             nbContentBytesRead += nbChars;
             if ((nbContentBytesRead) == messageContentLength) {
 
-                getPushService().push(std::move(messageType), std::move(messageContent));
+                getPushService().push(ring, std::move(messageType), std::move(messageContent));
 
                 messageContentLength = 0;
                 nbMessageBytesRead = 0;

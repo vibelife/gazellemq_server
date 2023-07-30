@@ -29,8 +29,6 @@ namespace gazellemq::server {
         void start(int port, size_t const queueDepth) {
             signal(SIGINT, sigintHandler);
 
-            getPushService().start();
-
             io_uring_queue_init(queueDepth, &ring, 0);
 
             serverConnection = new ServerConnection{port};
