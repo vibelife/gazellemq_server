@@ -12,6 +12,7 @@ namespace gazellemq::server {
         enum MessagePublisherState {
             MessagePublisherState_notSet,
             MessagePublisherState_receiveData,
+            MessagePublisherState_disconnect,
         };
 
         char readBuffer[MAX_READ_BUF]{};
@@ -29,12 +30,29 @@ namespace gazellemq::server {
 
         std::string messageType;
         std::string messageContent;
-        std::string messageContentBuffer;
+        std::string messageLengthBuffer;
         size_t messageContentLength;
 
         size_t nbMessageBytesRead{};
         size_t nbContentBytesRead{};
     private:
+        /**
+         * Disconnects from the server
+         * @param ring
+         */
+        void beginDisconnect(struct io_uring* ring) {
+            io_uring_sqe* sqe = io_uring_get_sqe(ring);
+            io_uring_prep_close(sqe, fd);
+            io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
+
+            state = MessagePublisherState_disconnect;
+            io_uring_submit(ring);
+        }
+
+        void onDisconnected(struct io_uring *ring, int res) {
+            printf("A publisher disconnected\n");
+        }
+
         /**
          * Receives data from the publisher
          * @param ring
@@ -54,68 +72,51 @@ namespace gazellemq::server {
          * @param res
          */
         void onReceiveDataComplete(struct io_uring *ring, int res) {
-            nbMessageBytesRead = 0;
-
-            if (parseState == ParseState_messageContent) {
-                if (readRestOfBuffer(ring, 0, res)) {
-                    return;
-                }
+            if (res == 0) {
+                // The client has disconnected
+                beginDisconnect(ring);
             } else {
-                for (size_t i{0}; i < res; ++i) {
-                    char ch {readBuffer[i]};
-                    ++nbMessageBytesRead;
-                    if (parseState == ParseState_messageType) {
-                        if (ch == '|') {
-                            parseState = ParseState_messageContentLength;
-                            continue;
-                        } else {
-                            messageType.push_back(ch);
-                        }
-                    } else if (parseState == ParseState_messageContentLength) {
-                        if (ch == '|') {
-                            messageContentLength = std::stoul(messageContentBuffer);
-                            parseState = ParseState_messageContent;
-                            continue;
-                        } else {
-                            messageContentBuffer.push_back(ch);
-                        }
-                    } else if (parseState == ParseState_messageContent) {
-                        if (!readRestOfBuffer(ring, i, res - nbMessageBytesRead + 1)) {
-                            beginReceiveData(ring);
-                        }
-                        return;
+                parseMessage(ring, readBuffer, res);
+
+                beginReceiveData(ring);
+            }
+        }
+
+        void parseMessage(struct io_uring *ring, char const* buffer, size_t bufferLength) {
+            for (size_t i{0}; i < bufferLength; ++i) {
+                char ch {buffer[i]};
+                if (parseState == ParseState_messageType) {
+                    if (ch == '|') {
+                        parseState = ParseState_messageContentLength;
+                        continue;
+                    } else {
+                        messageType.push_back(ch);
+                    }
+                } else if (parseState == ParseState_messageContentLength) {
+                    if (ch == '|') {
+                        messageContentLength = std::stoul(messageLengthBuffer);
+                        parseState = ParseState_messageContent;
+                        continue;
+                    } else {
+                        messageLengthBuffer.push_back(ch);
+                    }
+                } else if (parseState == ParseState_messageContent) {
+                    messageContent.push_back(ch);
+                    ++nbContentBytesRead;
+
+                    if (messageContentLength == nbContentBytesRead) {
+                        // Done parsing
+                        getPushService().push(ring, std::move(messageType), std::move(messageContent));
+
+                        messageContentLength = 0;
+                        nbContentBytesRead = 0;
+                        messageContent.clear();
+                        messageLengthBuffer.clear();
+                        messageType.clear();
+                        parseState = ParseState_messageType;
                     }
                 }
             }
-
-            beginReceiveData(ring);
-        }
-
-        /**
-         * Reads the rest of readBuffer
-         * @param startPos
-         * @param nbChars
-         * @return returns true if parsing is done
-         */
-        bool readRestOfBuffer(struct io_uring *ring, size_t startPos, size_t nbChars) {
-            messageContent.append(&readBuffer[startPos], nbChars);
-
-            nbContentBytesRead += nbChars;
-            if ((nbContentBytesRead) == messageContentLength) {
-
-                getPushService().push(ring, std::move(messageType), std::move(messageContent));
-
-                messageContentLength = 0;
-                nbMessageBytesRead = 0;
-                nbContentBytesRead = 0;
-                messageContent.clear();
-                messageContentBuffer.clear();
-                messageType.clear();
-
-                return true;
-            }
-
-            return false;
         }
     public:
         explicit MessagePublisher(int fileDescriptor)
@@ -140,6 +141,9 @@ namespace gazellemq::server {
                     break;
                 case MessagePublisherState_receiveData:
                     onReceiveDataComplete(ring, res);
+                    break;
+                case MessagePublisherState_disconnect:
+                    onDisconnected(ring, res);
                     break;
             }
         }

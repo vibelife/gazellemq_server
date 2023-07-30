@@ -123,6 +123,10 @@ namespace gazellemq::server {
             }
         }
 
+        void onClientDisconnected(ClientConnection* clientConnection) {
+
+        }
+
     public:
         ServerConnection(int port): port(port) {}
 
