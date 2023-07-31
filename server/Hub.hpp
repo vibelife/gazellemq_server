@@ -17,7 +17,7 @@
 namespace gazellemq::server {
     class Hub {
     private:
-        static constexpr auto NB_EVENTS = 16;
+        static constexpr auto NB_EVENTS = 32;
         ServerConnection* serverConnection{};
         struct io_uring ring{};
 
