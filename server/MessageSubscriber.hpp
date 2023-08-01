@@ -78,7 +78,7 @@ namespace gazellemq::server {
         ~MessageSubscriber() override = default;
 
         [[nodiscard]] bool isIdle() const {
-            return (currentMessage == nullptr || currentMessage->content.empty()) && pendingMessages.empty();
+            return (currentMessage == nullptr || currentMessage->content == nullptr) && pendingMessages.empty();
         }
 
         /**
@@ -90,7 +90,7 @@ namespace gazellemq::server {
             if (currentMessage == nullptr) {
                 currentMessage = message;
                 sendData(ring);
-            } else if (!currentMessage->content.empty()) {
+            } else if (currentMessage->content != nullptr) {
                 pendingMessages.emplace_back(message);
             } else {
                 // we should never get here
@@ -108,7 +108,7 @@ namespace gazellemq::server {
          */
         void sendData(struct io_uring *ring) {
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
-            io_uring_prep_send(sqe, fd, currentMessage->content.c_str(), currentMessage->content.size(), 0);
+            io_uring_prep_send(sqe, fd, &currentMessage->content[currentMessage->i], currentMessage->n, 0);
 
             state = DataPushState_sendData;
             io_uring_sqe_set_data(sqe, this);
@@ -123,14 +123,15 @@ namespace gazellemq::server {
          */
         void onSendDataComplete(struct io_uring *ring, int res) {
             if (res > -1) {
-                currentMessage->content.erase(0, res);
-                if (currentMessage->content.empty()) {
-                    // if (++count == 50000) {
-                    //     auto t = std::chrono::high_resolution_clock::now().time_since_epoch();
-                    //     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t);
-                    //     printf("(2) Done sending: %zu\n", ms.count());
-                    //     count = 0;
-                    // }
+                currentMessage->i += res;
+                currentMessage->n -= res;
+                if (currentMessage->n == 0) {
+                    if (++count == 50000) {
+                        auto t = std::chrono::high_resolution_clock::now().time_since_epoch();
+                        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t);
+                        printf("(2) Done sending: %zu\n", ms.count());
+                        count = 0;
+                    }
 
                     // To get here means we've sent all the data
                     delete currentMessage;

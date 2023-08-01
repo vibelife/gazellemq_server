@@ -51,14 +51,14 @@ namespace gazellemq::server {
             msg.push_back('|');
             msg.append(messageContent);
 
-            for (auto* subscriber : subscribers) {
-                if (subscriber->isSubscribed(messageType)) {
-                    auto* message = new Message{};
-                    message->content.reserve(msg.size());
-                    message->content.append(msg);
-                    subscriber->push(ring, message);
-                }
-            }
+            // for (auto* subscriber : subscribers) {
+            //     if (subscriber->isSubscribed(messageType)) {
+            //         auto* message = new Message{};
+            //         message->content.reserve(msg.size());
+            //         message->content.append(msg);
+            //         subscriber->push(ring, message);
+            //     }
+            // }
         }
 
         /**
@@ -68,14 +68,30 @@ namespace gazellemq::server {
          */
         void pushToQueue(std::string&& messageType, std::string&& messageContent) {
             auto* message = new Message{};
-            message->messageType.append(messageType);
-            message->content.reserve(messageType.size() + messageContent.size() + 16);
+            // message->messageType.append(messageType);
+            // message->content.reserve(messageType.size() + messageContent.size() + 16);
 
-            message->content.append(messageType);
-            message->content.push_back('|');
-            message->content.append(std::to_string(messageContent.size()));
-            message->content.push_back('|');
-            message->content.append(messageContent);
+            // message->content.append(messageType);
+            // message->content.push_back('|');
+            // message->content.append(std::to_string(messageContent.size()));
+            // message->content.push_back('|');
+            // message->content.append(messageContent);
+
+            message->messageType = static_cast<char*>(calloc(messageType.size() + 1, sizeof(char)));
+            memmove(message->messageType, messageType.c_str(), messageType.size());
+
+            message->content = static_cast<char*>(calloc(messageType.size() + messageContent.size() + 3, sizeof(char)));
+
+            std::string sz = std::to_string(messageContent.size());
+
+            memmove(message->content, messageType.c_str(), messageType.size());
+            memmove(&message->content[messageType.size()], "|", 1);
+            memmove(&message->content[messageType.size() + 1], sz.c_str(), sz.size());
+            memmove(&message->content[messageType.size() + 1 + sz.size()], "|", 1);
+            memmove(&message->content[messageType.size() + 1 + sz.size() + 1], messageContent.c_str(), messageContent.size());
+
+            message->n = strlen(message->content);
+            message->i = 0;
 
             messageQueue.push(message);
 
