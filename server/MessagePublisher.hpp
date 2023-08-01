@@ -9,6 +9,7 @@
 namespace gazellemq::server {
     class MessagePublisher : public MessageHandler {
     private:
+        size_t count{};
         enum MessagePublisherState {
             MessagePublisherState_notSet,
             MessagePublisherState_receiveData,
@@ -101,13 +102,31 @@ namespace gazellemq::server {
                         messageLengthBuffer.push_back(ch);
                     }
                 } else if (parseState == ParseState_messageContent) {
-                    messageContent.push_back(ch);
-                    ++nbContentBytesRead;
+                    size_t nbCharsNeeded {messageContentLength - nbContentBytesRead};
+                    // add as many characters as possible in bulk
+
+                    if ((i + nbCharsNeeded) <= bufferLength) {
+                        messageContent.append(&buffer[i], nbCharsNeeded);
+                    } else {
+                        nbCharsNeeded = bufferLength - i;
+                        messageContent.append(&buffer[i], nbCharsNeeded);
+                    }
+
+                    i += nbCharsNeeded - 1;
+                    nbContentBytesRead += nbCharsNeeded;
 
                     if (messageContentLength == nbContentBytesRead) {
                         // Done parsing
-                        getPushService().push(ring, std::move(messageType), std::move(messageContent));
+                        //getPushService().pushToSubscribers(ring, std::move(messageType), std::move(messageContent));
+                        // if (++count == 50000) {
+                        //     auto t = std::chrono::high_resolution_clock::now().time_since_epoch();
+                        //     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t);
+                        //     printf("(1) Done parsing: %zu\n", ms.count());
+                        //     // printf("Done parsing (%s): %zu\n", messageContent.c_str(), ms.count());
+                        //     count = 0;
+                        // }
 
+                        getPushService().pushToQueue(std::move(messageType), std::move(messageContent));
                         messageContentLength = 0;
                         nbContentBytesRead = 0;
                         messageContent.clear();

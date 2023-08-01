@@ -23,6 +23,7 @@ namespace gazellemq::server {
         std::string subscriptionsBuffer;
         std::list<Message*> pendingMessages;
         Message* currentMessage{};
+        size_t count{};
     private:
         /**
          * Receives subscriptions from the subscriber
@@ -76,8 +77,12 @@ namespace gazellemq::server {
 
         ~MessageSubscriber() override = default;
 
+        [[nodiscard]] bool isIdle() const {
+            return (currentMessage == nullptr || currentMessage->content.empty()) && pendingMessages.empty();
+        }
+
         /**
-         * Sends the data push, or queues it to be sent later.
+         * Sends the data pushToSubscribers, or queues it to be sent later.
          * @param ring
          * @param message
          */
@@ -106,7 +111,7 @@ namespace gazellemq::server {
             io_uring_prep_send(sqe, fd, currentMessage->content.c_str(), currentMessage->content.size(), 0);
 
             state = DataPushState_sendData;
-            io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
+            io_uring_sqe_set_data(sqe, this);
             io_uring_submit(ring);
         }
 
@@ -120,17 +125,25 @@ namespace gazellemq::server {
             if (res > -1) {
                 currentMessage->content.erase(0, res);
                 if (currentMessage->content.empty()) {
+                    // if (++count == 50000) {
+                    //     auto t = std::chrono::high_resolution_clock::now().time_since_epoch();
+                    //     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t);
+                    //     printf("(2) Done sending: %zu\n", ms.count());
+                    //     count = 0;
+                    // }
+
                     // To get here means we've sent all the data
                     delete currentMessage;
                     currentMessage = nullptr;
 
-                    // go to the next push if one exists
+                    // go to the next pushToSubscribers if one exists
                     if (!pendingMessages.empty()) {
                         currentMessage = pendingMessages.front();
                         pendingMessages.pop_front();
                         sendData(ring);
                     } else {
                         state = MessageSubscriberState_ready;
+
                     }
                 } else {
                     sendData(ring);

@@ -87,7 +87,7 @@ namespace gazellemq::server {
         }
 
         /**
-         * Wait for the client to push indicate whether it is a publisher or subscriber
+         * Wait for the client to pushToSubscribers indicate whether it is a publisher or subscriber
          * @param client
          */
         void beginReceiveIntent(struct io_uring* ring) {
