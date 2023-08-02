@@ -36,46 +36,12 @@ namespace gazellemq::server {
 
     public:
         /**
-         * Pushes the message out to subscribers.
-         * @param ring
-         * @param messageType
-         * @param messageContent
-         */
-        void pushToSubscribers(struct io_uring *ring, std::string&& messageType, std::string&& messageContent) {
-            std::string msg;
-            msg.reserve(messageType.size() + messageContent.size() + 16);
-
-            msg.append(messageType);
-            msg.push_back('|');
-            msg.append(std::to_string(messageContent.size()));
-            msg.push_back('|');
-            msg.append(messageContent);
-
-            // for (auto* subscriber : subscribers) {
-            //     if (subscriber->isSubscribed(messageType)) {
-            //         auto* message = new Message{};
-            //         message->content.reserve(msg.size());
-            //         message->content.append(msg);
-            //         subscriber->push(ring, message);
-            //     }
-            // }
-        }
-
-        /**
          * Pushes the message to the queue. Messages are sent to subscribers in a background thread.
          * @param messageType
          * @param messageContent
          */
         void pushToQueue(std::string&& messageType, std::string&& messageContent) {
             auto* message = new Message{};
-            // message->messageType.append(messageType);
-            // message->content.reserve(messageType.size() + messageContent.size() + 16);
-
-            // message->content.append(messageType);
-            // message->content.push_back('|');
-            // message->content.append(std::to_string(messageContent.size()));
-            // message->content.push_back('|');
-            // message->content.append(messageContent);
 
             message->messageType = static_cast<char*>(calloc(messageType.size() + 1, sizeof(char)));
             memmove(message->messageType, messageType.c_str(), messageType.size());
