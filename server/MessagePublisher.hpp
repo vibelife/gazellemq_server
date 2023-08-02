@@ -9,7 +9,6 @@
 namespace gazellemq::server {
     class MessagePublisher : public MessageHandler {
     private:
-        size_t count{};
         enum MessagePublisherState {
             MessagePublisherState_notSet,
             MessagePublisherState_receiveData,
