@@ -23,7 +23,6 @@ namespace gazellemq::server {
         std::string subscriptionsBuffer;
         std::list<Message*> pendingMessages;
         Message* currentMessage{};
-        size_t count{};
     private:
         /**
          * Receives subscriptions from the subscriber

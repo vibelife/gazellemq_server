@@ -20,7 +20,6 @@ namespace gazellemq::server {
         std::atomic_flag hasPendingData{false};
         std::atomic_flag isRunning{true};
         std::jthread bgThread;
-        size_t count{};
     public:
         PushService()
             :messageQueue(500000)
