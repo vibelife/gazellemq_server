@@ -133,13 +133,6 @@ namespace gazellemq::server {
                     bool isPushing{};
                     Message* message;
                     while (messageQueue.try_pop(message)) {
-                        // if (++count == 1) {
-                        //     auto t = std::chrono::high_resolution_clock::now().time_since_epoch();
-                        //     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t);
-                        //     printf("Message popped (%s): %zu\n", message->messageType.c_str(), ms.count());
-                        //     count = 0;
-                        // }
-
                         for (auto* subscriber : subscribers) {
                             if (subscriber->isSubscribed(message->messageType)) {
                                 subscriber->push(&ring, message);

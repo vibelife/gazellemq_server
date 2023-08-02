@@ -117,13 +117,6 @@ namespace gazellemq::server {
                     if (messageContentLength == nbContentBytesRead) {
                         // Done parsing
                         //getPushService().pushToSubscribers(ring, std::move(messageType), std::move(messageContent));
-                        if (++count == 50000) {
-                            auto t = std::chrono::high_resolution_clock::now().time_since_epoch();
-                            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t);
-                            printf("(1) Done parsing: %zu\n", ms.count());
-                            // printf("Done parsing (%s): %zu\n", messageContent.c_str(), ms.count());
-                            count = 0;
-                        }
 
                         getPushService().pushToQueue(std::move(messageType), std::move(messageContent));
                         messageContentLength = 0;

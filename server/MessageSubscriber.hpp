@@ -126,13 +126,6 @@ namespace gazellemq::server {
                 currentMessage->i += res;
                 currentMessage->n -= res;
                 if (currentMessage->n == 0) {
-                    if (++count == 50000) {
-                        auto t = std::chrono::high_resolution_clock::now().time_since_epoch();
-                        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t);
-                        printf("(2) Done sending: %zu\n", ms.count());
-                        count = 0;
-                    }
-
                     // To get here means we've sent all the data
                     delete currentMessage;
                     currentMessage = nullptr;
