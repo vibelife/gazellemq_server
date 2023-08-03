@@ -118,6 +118,11 @@ namespace gazellemq::server {
                     }
 
                     while (isRunning.test()) {
+                        if (std::all_of(subscribers.begin(), subscribers.end(), [](MessageSubscriber* o) {
+                            return o->isIdle();
+                        })) {
+                            goto outer;
+                        }
                         int ret = io_uring_wait_cqe_timeout(&ring, cqes.data(), &ts);
                         if (ret == -SIGILL || ret == TIMEOUT) {
                             continue;
@@ -142,11 +147,6 @@ namespace gazellemq::server {
                             io_uring_cqe_seen(&ring, cqe);
                         }
 
-                        if (std::all_of(subscribers.begin(), subscribers.end(), [](MessageSubscriber* o) {
-                            return o->isIdle();
-                        })) {
-                            goto outer;
-                        }
                     }
                 }
             }};
