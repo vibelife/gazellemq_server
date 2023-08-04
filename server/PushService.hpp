@@ -21,8 +21,8 @@ namespace gazellemq::server {
         std::atomic_flag isRunning{true};
         std::jthread bgThread;
     public:
-        PushService()
-            :messageQueue(500000)
+        PushService(size_t messageQueueDepth)
+            :messageQueue(messageQueueDepth)
         {}
     private:
         /**
@@ -161,7 +161,7 @@ namespace gazellemq::server {
         }
     };
 
-    inline PushService _mq{};
+    inline PushService _mq{500000};
 
     static PushService& getPushService() {
         return gazellemq::server::_mq;
