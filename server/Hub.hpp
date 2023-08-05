@@ -101,6 +101,7 @@ namespace gazellemq::server {
 
                 if (ret < 0) {
                     if (ret == TIMEOUT) {
+                        serverConnection->doClientConnectionCleanUp();
                         continue;
                     } else {
                         printError("io_uring_wait_cqe_timeout(...)", ret);

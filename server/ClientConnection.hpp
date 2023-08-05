@@ -31,12 +31,17 @@ namespace gazellemq::server {
 
     public:
         virtual ~ClientConnection() {
+            printf("Removing client connection: %s\n", handler->clientName.c_str());
             delete handler;
         }
 
         void start(struct io_uring* ring, int epfd, int fileDescriptor) {
             this->fd = fileDescriptor;
             beginMakeNonblockingSocket(ring, epfd);
+        }
+
+        [[nodiscard]] bool getIsZombie() const {
+            return handler != nullptr && handler->getIsZombie();
         }
     private:
         /**
@@ -91,6 +96,7 @@ namespace gazellemq::server {
          * @param client
          */
         void beginReceiveIntent(struct io_uring* ring) {
+            memset(readBuffer, 0, MAX_READ_BUF);
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_recv(sqe, fd, readBuffer, 2, 0);
             io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
@@ -118,7 +124,6 @@ namespace gazellemq::server {
                         this->handler = new MessagePublisher(fd);
                     } else if (intent == SUBSCRIBER_INTENT) {
                         this->handler = new MessageSubscriber(fd);
-                        getPushService().registerSubscriber(dynamic_cast<MessageSubscriber*>(this->handler));
                     }
 
                     // now receive the name from the client
@@ -133,6 +138,7 @@ namespace gazellemq::server {
          * @param ring
          */
         void beginReceiveName(struct io_uring *ring) {
+            memset(readBuffer, 0, MAX_READ_BUF);
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_recv(sqe, fd, readBuffer, MAX_READ_BUF, 0);
             io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
@@ -152,6 +158,10 @@ namespace gazellemq::server {
                 handler->clientName.erase(handler->clientName.size() - 1, 1);
                 handler->printHello();
                 handler->handleEvent(ring, 0);
+
+                if (handler->isSubscriber()) {
+                    getPushService().registerSubscriber(dynamic_cast<MessageSubscriber *>(this->handler));
+                }
             } else {
                 beginReceiveName(ring);
             }

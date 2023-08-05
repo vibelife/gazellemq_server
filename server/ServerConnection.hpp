@@ -136,6 +136,30 @@ namespace gazellemq::server {
         }
 
     public:
+        /**
+         * Removes inactive client connections
+         */
+        void doClientConnectionCleanUp() {
+            bool mustRemove{};
+            size_t i{clientConnections.size()};
+            while (i > 0) {
+                --i;
+
+                if (clientConnections[i]->getIsZombie()) {
+                    delete clientConnections[i];
+                    clientConnections[i] = nullptr;
+                    mustRemove = true;
+                }
+            }
+
+            if (mustRemove) {
+                clientConnections.erase(
+                        std::remove_if(clientConnections.begin(), clientConnections.end(), [](ClientConnection *o) {
+                            return o == nullptr;
+                        }), clientConnections.end());
+            }
+        }
+
         void handleEvent(struct io_uring *ring, int res) override {
             switch (event) {
                 case Enums::Event::Event_NotSet:

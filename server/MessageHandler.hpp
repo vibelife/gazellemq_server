@@ -8,13 +8,30 @@ namespace gazellemq::server {
     public:
         std::string clientName;
         const int fd;
+    protected:
+        bool isZombie{};
 
     public:
         explicit MessageHandler(int fileDescriptor)
                 :fd(fileDescriptor)
         {}
 
+        [[nodiscard]] bool getIsZombie() const {
+            return isZombie;
+        }
+
+        /**
+         * This subscriber becomes inactive, then eventually deleted.
+         */
+        void markForRemoval() {
+            if (!isZombie) {
+                isZombie = true;
+                clientName.append(" [Zombie]");
+            }
+        }
+
         virtual ~MessageHandler() = default;
+        [[nodiscard]] virtual bool isSubscriber() const { return false; };
         virtual void printHello() const = 0;
     };
 }

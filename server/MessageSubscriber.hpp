@@ -5,6 +5,7 @@
 #include "MessageHandler.hpp"
 #include "Consts.hpp"
 #include "StringUtils.hpp"
+#include "PushService.hpp"
 
 namespace gazellemq::server {
     class MessageSubscriber : public MessageHandler {
@@ -14,7 +15,7 @@ namespace gazellemq::server {
             MessageSubscriberState_receiveSubscriptions,
             MessageSubscriberState_sendAck,
             MessageSubscriberState_ready,
-            DataPushState_sendData,
+            MessageSubscriberState_sendData
         };
 
         MessageSubscriberState state{MessageSubscriberState_notSet};
@@ -29,6 +30,7 @@ namespace gazellemq::server {
          * @param ring
          */
         void beginReceiveSubscriptions(struct io_uring *ring) {
+            memset(readBuffer, 0, MAX_READ_BUF);
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_recv(sqe, fd, readBuffer, MAX_READ_BUF, 0);
             io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
@@ -76,6 +78,14 @@ namespace gazellemq::server {
 
         ~MessageSubscriber() override = default;
 
+        [[nodiscard]] virtual bool isSubscriber() const override {
+            return true;
+        }
+
+        /**
+         * Returns true if this subscriber is not transferring data.
+         * @return
+         */
         [[nodiscard]] bool isIdle() const {
             return (currentMessage == nullptr || currentMessage->content == nullptr) && pendingMessages.empty();
         }
@@ -109,7 +119,7 @@ namespace gazellemq::server {
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_send(sqe, fd, &currentMessage->content[currentMessage->i], currentMessage->n, 0);
 
-            state = DataPushState_sendData;
+            state = MessageSubscriberState_sendData;
             io_uring_sqe_set_data(sqe, this);
             io_uring_submit(ring);
         }
@@ -152,6 +162,10 @@ namespace gazellemq::server {
          * @return
          */
         [[nodiscard]] bool isSubscribed(std::string_view messageType) const {
+            if (isZombie) {
+                return false;
+            }
+
             return std::any_of(subscriptions.begin(), subscriptions.end(), [messageType](std::string const& o) {
                 return o == messageType;
             });
@@ -173,7 +187,7 @@ namespace gazellemq::server {
                 case MessageSubscriberState_receiveSubscriptions:
                     onReceiveSubscriptionsComplete(ring, res);
                     break;
-                case DataPushState_sendData:
+                case MessageSubscriberState_sendData:
                     onSendDataComplete(ring, res);
                     break;
                 default:

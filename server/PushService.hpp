@@ -74,6 +74,32 @@ namespace gazellemq::server {
             }
         }
 
+        /**
+         * Removes inactive subscribers
+         */
+        void doSubscriberCleanUp() {
+            bool mustRemove{};
+            size_t i{subscribers.size()};
+            while (i > 0) {
+                --i;
+
+                if (subscribers[i]->getIsZombie()) {
+                    // delete subscribers[i];
+                    // the subscriber is deleted in ClientConnection
+                    subscribers[i] = nullptr;
+                    mustRemove = true;
+                }
+            }
+
+            if (mustRemove) {
+                subscribers.erase(
+                        std::remove_if(subscribers.begin(), subscribers.end(), [](MessageSubscriber *o) {
+                            return o == nullptr;
+                        }), subscribers.end());
+            }
+        }
+
+
         void go() {
             using namespace std::chrono_literals;
             bgThread = std::jthread{[this]() {
@@ -91,9 +117,14 @@ namespace gazellemq::server {
                 outer:
                 while (isRunning.test()) {
                     std::unique_lock uniqueLock{mQueue};
-                    cvQueue.wait(uniqueLock, [this]() { return hasPendingData.test(); });
+                    bool didTimeout{!cvQueue.wait_for(uniqueLock, 2s, [this]() { return hasPendingData.test(); })};
 
                     uniqueLock.unlock();
+
+                    if (didTimeout) {
+                        doSubscriberCleanUp();
+                        goto outer;
+                    }
 
                     bool isPushing{};
                     Message* message;
@@ -157,6 +188,13 @@ namespace gazellemq::server {
          * @param subscriber
          */
         void registerSubscriber(MessageSubscriber* subscriber) {
+            // other subscribers with the same name will be removed
+            for (auto* o: subscribers) {
+                if (o->clientName == subscriber->clientName) {
+                    o->markForRemoval();
+                }
+            }
+
             subscribers.emplace_back(subscriber);
         }
     };

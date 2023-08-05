@@ -13,6 +13,7 @@ namespace gazellemq::server {
             MessagePublisherState_notSet,
             MessagePublisherState_receiveData,
             MessagePublisherState_disconnect,
+            MessagePublisherState_sendAck,
         };
 
         char readBuffer[MAX_READ_BUF]{};
@@ -50,6 +51,25 @@ namespace gazellemq::server {
 
         void onDisconnected(struct io_uring *ring, int res) {
             printf("A publisher disconnected\n");
+            markForRemoval();
+        }
+
+
+        /**
+         * Sends an acknowledgement to the client
+         * @param ring
+         */
+        void beginSendAck(struct io_uring *ring) {
+            io_uring_sqe* sqe = io_uring_get_sqe(ring);
+            io_uring_prep_send(sqe, fd, "\r", 1, 0);
+            io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
+
+            state = MessagePublisherState_sendAck;
+            io_uring_submit(ring);
+        }
+
+        void onSendAckComplete(struct io_uring *ring, int res) {
+            beginReceiveData(ring);
         }
 
         /**
@@ -57,6 +77,7 @@ namespace gazellemq::server {
          * @param ring
          */
         void beginReceiveData(struct io_uring *ring) {
+            memset(readBuffer, 0, MAX_READ_BUF);
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_recv(sqe, fd, readBuffer, MAX_READ_BUF, 0);
             io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
@@ -147,7 +168,10 @@ namespace gazellemq::server {
         void handleEvent(struct io_uring *ring, int res) override {
             switch (state) {
                 case MessagePublisherState_notSet:
-                    beginReceiveData(ring);
+                    beginSendAck(ring);
+                    break;
+                case MessagePublisherState_sendAck:
+                    onSendAckComplete(ring, res);
                     break;
                 case MessagePublisherState_receiveData:
                     onReceiveDataComplete(ring, res);
