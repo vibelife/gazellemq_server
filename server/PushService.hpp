@@ -42,20 +42,15 @@ namespace gazellemq::server {
         void pushToQueue(std::string&& messageType, std::string&& messageContent) {
             auto* message = new Message{};
 
-            message->messageType = static_cast<char*>(calloc(messageType.size() + 1, sizeof(char)));
-            memmove(message->messageType, messageType.c_str(), messageType.size());
+            message->messageType.append(messageType);
 
-            message->content = static_cast<char*>(calloc(messageType.size() + messageContent.size() + 3, sizeof(char)));
+            message->content.append(messageType);
+            message->content.append("|");
+            message->content.append(std::to_string(messageContent.size()));
+            message->content.append("|");
+            message->content.append(messageContent);
 
-            std::string sz = std::to_string(messageContent.size());
-
-            memmove(message->content, messageType.c_str(), messageType.size());
-            memmove(&message->content[messageType.size()], "|", 1);
-            memmove(&message->content[messageType.size() + 1], sz.c_str(), sz.size());
-            memmove(&message->content[messageType.size() + 1 + sz.size()], "|", 1);
-            memmove(&message->content[messageType.size() + 1 + sz.size() + 1], messageContent.c_str(), messageContent.size());
-
-            message->n = strlen(message->content);
+            message->n = message->content.size();
             message->i = 0;
 
             messageQueue.push(message);

@@ -87,7 +87,7 @@ namespace gazellemq::server {
          * @return
          */
         [[nodiscard]] bool isIdle() const {
-            return (currentMessage == nullptr || currentMessage->content == nullptr) && pendingMessages.empty();
+            return (currentMessage == nullptr || currentMessage->content.empty()) && pendingMessages.empty();
         }
 
         /**
@@ -99,7 +99,7 @@ namespace gazellemq::server {
             if (currentMessage == nullptr) {
                 currentMessage = message;
                 sendData(ring);
-            } else if (currentMessage->content != nullptr) {
+            } else if (!currentMessage->content.empty()) {
                 pendingMessages.emplace_back(message);
             } else {
                 // we should never get here

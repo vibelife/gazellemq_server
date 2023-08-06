@@ -6,18 +6,13 @@
 
 namespace gazellemq::server {
     struct Message {
-        char* messageType;
-        char* content;
+        std::string messageType;
+        std::string content;
 
         size_t i{};
         size_t n{};
 
         ~Message() {
-            free(messageType);
-            free(content);
-
-            messageType = nullptr;
-            content = nullptr;
             i = 0;
             n = 0;
         }
