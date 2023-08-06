@@ -78,6 +78,10 @@ namespace gazellemq::server {
 
         ~MessageSubscriber() override = default;
 
+        /**
+         * Returns true
+         * @return
+         */
         [[nodiscard]] virtual bool isSubscriber() const override {
             return true;
         }
