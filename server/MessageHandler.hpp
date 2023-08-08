@@ -16,6 +16,10 @@ namespace gazellemq::server {
                 :fd(fileDescriptor)
         {}
 
+        /**
+         * Returns true if this handler is about to be deleted
+         * @return
+         */
         [[nodiscard]] bool getIsZombie() const {
             return isZombie;
         }
