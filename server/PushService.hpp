@@ -21,7 +21,7 @@ namespace gazellemq::server {
         std::atomic_flag isRunning{true};
         std::jthread bgThread;
     public:
-        PushService(size_t messageQueueDepth)
+        explicit PushService(size_t messageQueueDepth)
             :messageQueue(messageQueueDepth)
         {}
     private:
