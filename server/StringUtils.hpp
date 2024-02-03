@@ -12,16 +12,21 @@ namespace gazellemq::utils {
      * @return
      */
     void split(std::string &&input, std::vector<std::string>& strings, std::string &&prefix = "", char delimiter = ',') {
-        char *s = input.data();
-        char *word = strtok(s, &delimiter);
+        std::string buf;
+        buf.reserve(input.size());
 
-        while (word) {
-            std::string val{prefix};
-            val.append(word);
-            strings.emplace_back(std::move(val));
-            word = strtok(nullptr, &delimiter);
+        for (size_t i{}; i < input.size(); ++i) {
+            if (input[i] != ',') {
+                buf.push_back(input[i]);
+            } else {
+                strings.push_back(std::move(std::string{buf}));
+                buf.clear();
+            }
         }
-        input.clear();
+
+        if (!buf.empty()) {
+            strings.push_back(std::move(buf));
+        }
     }
 }
 
