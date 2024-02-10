@@ -7,16 +7,19 @@
 #include "Message.hpp"
 #include "MessageSubscriber.hpp"
 #include "Consts.hpp"
+#include "MessageChunk.hpp"
 
 
 namespace gazellemq::server {
     class PushService {
     private:
         std::vector<MessageSubscriber*> subscribers;
-        rigtorp::MPMCQueue<Message*> messageQueue;
+        rigtorp::MPMCQueue<MessageChunk> messageQueue;
 
         std::mutex mQueue;
         std::condition_variable cvQueue;
+        std::atomic_flag afQueue{false};
+
         std::atomic_flag hasPendingData{false};
         std::atomic_flag isRunning{true};
         std::jthread bgThread;
@@ -39,6 +42,20 @@ namespace gazellemq::server {
          * @param messageType
          * @param messageContent
          */
+        void pushToQueue(std::string const& messageType, char const* buffer, size_t bufferLen) {
+            MessageChunk message{};
+
+            message.messageType.append(messageType);
+            std::memmove(message.content, buffer, bufferLen);
+            message.n = bufferLen;
+            message.i = 0;
+
+            messageQueue.push(std::move(message));
+
+            notify();
+        }
+
+        /*
         void pushToQueue(std::string&& messageType, std::string&& messageContent) {
             auto* message = new Message{};
 
@@ -57,6 +74,7 @@ namespace gazellemq::server {
 
             notify();
         }
+        */
 
         /**
          * Alerts the thread that there is pending data
@@ -79,8 +97,6 @@ namespace gazellemq::server {
                 --i;
 
                 if (subscribers[i]->getIsZombie()) {
-                    // delete subscribers[i];
-                    // the subscriber is deleted in ClientConnection
                     subscribers[i] = nullptr;
                     mustRemove = true;
                 }
@@ -122,10 +138,10 @@ namespace gazellemq::server {
                     }
 
                     bool isPushing{};
-                    Message* message;
+                    MessageChunk message;
                     while (messageQueue.try_pop(message)) {
                         for (auto* subscriber : subscribers) {
-                            if (subscriber->isSubscribed(message->messageType)) {
+                            if (subscriber->isSubscribed(message.messageType)) {
                                 subscriber->push(&ring, message);
                                 isPushing = true;
                             }

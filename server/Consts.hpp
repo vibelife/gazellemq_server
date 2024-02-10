@@ -7,6 +7,7 @@
 namespace gazellemq::server {
     static constexpr addrinfo GAI_HINTS{0, AF_INET, SOCK_STREAM, 0, 0, nullptr, nullptr, nullptr};
     static constexpr auto MAX_READ_BUF = 8192;
+    static constexpr auto MAX_OUT_BUF = 8192;
     static constexpr auto BIG_READ_BUF = 8192;
     static constexpr auto LAST_MSG_BUF_SIZE = 4096;
     static constexpr auto DEFAULT_OUT_QUEUE_DEPTH = 64;

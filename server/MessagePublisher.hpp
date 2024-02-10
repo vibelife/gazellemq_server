@@ -30,11 +30,11 @@ namespace gazellemq::server {
         ParseState parseState{ParseState_messageType};
 
         std::string messageType;
-        std::string messageContent;
         std::string messageLengthBuffer;
         size_t messageContentLength;
-
         size_t nbContentBytesRead{};
+        char outBuffer[MAX_OUT_BUF]{};
+        size_t outBufferLen{};
     private:
         /**
          * Disconnects from the server
@@ -96,52 +96,58 @@ namespace gazellemq::server {
                 // The client has disconnected
                 beginDisconnect(ring);
             } else {
-                parseMessage(ring, readBuffer, res);
+                streamMessage(readBuffer, res);
 
                 beginReceiveData(ring);
             }
         }
 
-        void parseMessage(struct io_uring *ring, char const* buffer, size_t bufferLength) {
+        /**
+         * Streams the message in chunks to subscribers
+         * @param buffer
+         * @param bufferLength
+         */
+        void streamMessage(char const* buffer, size_t bufferLength) {
             for (size_t i{0}; i < bufferLength; ++i) {
                 char ch {buffer[i]};
                 if (parseState == ParseState_messageType) {
                     if (ch == '|') {
+                        memmove(&outBuffer[outBufferLen++], "|", 1);
                         parseState = ParseState_messageContentLength;
                         continue;
                     } else {
                         messageType.push_back(ch);
+                        memmove(&outBuffer[outBufferLen++], &ch, 1);
                     }
                 } else if (parseState == ParseState_messageContentLength) {
                     if (ch == '|') {
                         messageContentLength = std::stoul(messageLengthBuffer);
+                        memmove(&outBuffer[outBufferLen++], "|", 1);
                         parseState = ParseState_messageContent;
                         continue;
                     } else {
                         messageLengthBuffer.push_back(ch);
+                        memmove(&outBuffer[outBufferLen++], &ch, 1);
                     }
                 } else if (parseState == ParseState_messageContent) {
                     size_t nbCharsNeeded {messageContentLength - nbContentBytesRead};
                     // add as many characters as possible in bulk
 
                     if ((i + nbCharsNeeded) <= bufferLength) {
-                        messageContent.append(&buffer[i], nbCharsNeeded);
+                        // do nothing here for now
                     } else {
                         nbCharsNeeded = bufferLength - i;
-                        messageContent.append(&buffer[i], nbCharsNeeded);
                     }
 
-                    i += nbCharsNeeded - 1;
                     nbContentBytesRead += nbCharsNeeded;
+                    addToOutBuffer(&buffer[i], nbCharsNeeded);
+                    i += nbCharsNeeded - 1;
 
                     if (messageContentLength == nbContentBytesRead) {
                         // Done parsing
-                        //getPushService().pushToSubscribers(ring, std::move(messageType), std::move(messageContent));
 
-                        getPushService().pushToQueue(std::move(messageType), std::move(messageContent));
                         messageContentLength = 0;
                         nbContentBytesRead = 0;
-                        messageContent.clear();
                         messageLengthBuffer.clear();
                         messageType.clear();
                         parseState = ParseState_messageType;
@@ -149,6 +155,33 @@ namespace gazellemq::server {
                 }
             }
         }
+
+        void addToOutBuffer(char const* buffer, size_t len) {
+            size_t nbChars{len};
+            size_t i{0};
+            size_t nbCharsToAdd{0};
+
+            while (nbChars > 0) {
+                if ((outBufferLen + nbChars) > MAX_OUT_BUF) {
+                    nbCharsToAdd = MAX_OUT_BUF - outBufferLen;
+                } else {
+                    nbCharsToAdd = nbChars;
+                }
+
+                memmove(&outBuffer[outBufferLen], &buffer[i], nbCharsToAdd);
+                outBufferLen += nbCharsToAdd;
+                i += nbCharsToAdd;
+                nbChars -= nbCharsToAdd;
+
+                if (outBufferLen == MAX_OUT_BUF || (nbChars <= 0 && messageContentLength == nbContentBytesRead)) {
+                    getPushService().pushToQueue(messageType, outBuffer, outBufferLen);
+
+                    memset(outBuffer, 0, MAX_OUT_BUF);
+                    outBufferLen = 0;
+                }
+            }
+        }
+
     public:
         explicit MessagePublisher(int fileDescriptor)
             :MessageHandler(fileDescriptor)

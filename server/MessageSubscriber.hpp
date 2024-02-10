@@ -6,6 +6,7 @@
 #include "Consts.hpp"
 #include "StringUtils.hpp"
 #include "PushService.hpp"
+#include "MessageChunk.hpp"
 
 namespace gazellemq::server {
     class MessageSubscriber : public MessageHandler {
@@ -22,8 +23,8 @@ namespace gazellemq::server {
         std::vector<std::string> subscriptions;
         char readBuffer[MAX_READ_BUF]{};
         std::string subscriptionsBuffer;
-        std::list<Message*> pendingMessages;
-        Message* currentMessage{};
+        std::list<MessageChunk> pendingChunks;
+        MessageChunk currentChunk{};
     private:
         /**
          * Receives subscriptions from the subscriber
@@ -91,27 +92,20 @@ namespace gazellemq::server {
          * @return
          */
         [[nodiscard]] bool isIdle() const {
-            return (currentMessage == nullptr || currentMessage->content.empty()) && pendingMessages.empty();
+            return (currentChunk.n == 0) && pendingChunks.empty();
         }
 
         /**
-         * Sends the data pushToSubscribers, or queues it to be sent later.
+         * Sends the data to the subscriber, or queues it to be sent later.
          * @param ring
-         * @param message
+         * @param chunk
          */
-        void push(struct io_uring *ring, Message* message) {
-            if (currentMessage == nullptr) {
-                currentMessage = message;
-                sendData(ring);
-            } else if (!currentMessage->content.empty()) {
-                pendingMessages.emplace_back(message);
-            } else {
-                // we should never get here
-                pendingMessages.emplace_back(message);
-                delete currentMessage;
-                currentMessage = pendingMessages.front();
-                pendingMessages.pop_front();
-                sendData(ring);
+        void push(struct io_uring *ring, MessageChunk const& chunk) {
+            if (currentChunk.n == 0) {
+                currentChunk = chunk;
+                sendCurrentChunk(ring);
+            } else if (currentChunk.n > currentChunk.i) {
+                pendingChunks.emplace_back(chunk);
             }
         }
 
@@ -119,9 +113,9 @@ namespace gazellemq::server {
          * Sends the remaining bytes to the endpoint
          * @param ring
          */
-        void sendData(struct io_uring *ring) {
+        void sendCurrentChunk(struct io_uring *ring) {
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
-            io_uring_prep_send(sqe, fd, &currentMessage->content[currentMessage->i], currentMessage->n, 0);
+            io_uring_prep_send(sqe, fd, &currentChunk.content[currentChunk.i], currentChunk.n, 0);
 
             state = MessageSubscriberState_sendData;
             io_uring_sqe_set_data(sqe, this);
@@ -134,29 +128,27 @@ namespace gazellemq::server {
          * @param res
          * @return
          */
-        void onSendDataComplete(struct io_uring *ring, int res) {
+        void onSendCurrentChunkComplete(struct io_uring *ring, int res) {
             if (res > -1) {
-                currentMessage->i += res;
-                currentMessage->n -= res;
-                if (currentMessage->n == 0) {
+                currentChunk.i += res;
+                currentChunk.n -= res;
+                if (currentChunk.n == 0) {
                     // To get here means we've sent all the data
-                    delete currentMessage;
-                    currentMessage = nullptr;
 
-                    // go to the next pushToSubscribers if one exists
-                    if (!pendingMessages.empty()) {
-                        currentMessage = pendingMessages.front();
-                        pendingMessages.pop_front();
-                        sendData(ring);
+                    // go to the next chunk if one exists
+                    if (!pendingChunks.empty()) {
+                        currentChunk = std::move(pendingChunks.front());
+                        pendingChunks.pop_front();
+                        sendCurrentChunk(ring);
                     } else {
                         state = MessageSubscriberState_ready;
 
                     }
                 } else {
-                    sendData(ring);
+                    sendCurrentChunk(ring);
                 }
             } else {
-                printError("onSendDataComplete", res);
+                printError("onSendCurrentChunkComplete", res);
             }
         }
 
@@ -192,7 +184,7 @@ namespace gazellemq::server {
                     onReceiveSubscriptionsComplete(ring, res);
                     break;
                 case MessageSubscriberState_sendData:
-                    onSendDataComplete(ring, res);
+                    onSendCurrentChunkComplete(ring, res);
                     break;
                 default:
                     break;
