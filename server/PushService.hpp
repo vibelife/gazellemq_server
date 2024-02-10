@@ -16,11 +16,11 @@ namespace gazellemq::server {
         std::vector<MessageSubscriber*> subscribers;
         rigtorp::MPMCQueue<MessageChunk> messageQueue;
 
-        std::mutex mQueue;
-        std::condition_variable cvQueue;
+        //std::mutex mQueue;
+        //std::condition_variable cvQueue;
         std::atomic_flag afQueue{false};
 
-        std::atomic_flag hasPendingData{false};
+        //std::atomic_flag hasPendingData{false};
         std::atomic_flag isRunning{true};
         std::jthread bgThread;
     public:
@@ -80,10 +80,14 @@ namespace gazellemq::server {
          * Alerts the thread that there is pending data
          */
         void notify() {
-            if (!hasPendingData.test()) {
-                std::lock_guard lock{mQueue};
-                hasPendingData.test_and_set();
-                cvQueue.notify_one();
+            //if (!hasPendingData.test()) {
+            //    std::lock_guard lock{mQueue};
+            //    hasPendingData.test_and_set();
+            //    cvQueue.notify_one();
+            //}
+            if (!afQueue.test()) {
+                afQueue.test_and_set();
+                afQueue.notify_one();
             }
         }
 
@@ -93,9 +97,7 @@ namespace gazellemq::server {
         void doSubscriberCleanUp() {
             bool mustRemove{};
             size_t i{subscribers.size()};
-            while (i > 0) {
-                --i;
-
+            while (i-- > 0) {
                 if (subscribers[i]->getIsZombie()) {
                     subscribers[i] = nullptr;
                     mustRemove = true;
@@ -127,15 +129,17 @@ namespace gazellemq::server {
 
                 outer:
                 while (isRunning.test()) {
-                    std::unique_lock uniqueLock{mQueue};
-                    bool didTimeout{!cvQueue.wait_for(uniqueLock, 2s, [this]() { return hasPendingData.test(); })};
+                    //std::unique_lock uniqueLock{mQueue};
+                    //bool didTimeout{!cvQueue.wait_for(uniqueLock, 2s, [this]() { return hasPendingData.test(); })};
+                    afQueue.wait(false);
 
-                    uniqueLock.unlock();
+                    //uniqueLock.unlock();
 
-                    if (didTimeout) {
-                        doSubscriberCleanUp();
-                        goto outer;
-                    }
+                    //if (didTimeout) {
+                    //    doSubscriberCleanUp();
+                    //    goto outer;
+                    //}
+                    doSubscriberCleanUp();
 
                     bool isPushing{};
                     MessageChunk message;
@@ -148,12 +152,13 @@ namespace gazellemq::server {
                         }
                     }
 
-                    {
-                        std::lock_guard lockGuard{mQueue};
-                        if (messageQueue.empty()) {
-                            hasPendingData.clear();
-                        }
-                    }
+                    //{
+                    //    std::lock_guard lockGuard{mQueue};
+                    //    if (messageQueue.empty()) {
+                    //        hasPendingData.clear();
+                    //    }
+                    //}
+                    afQueue.clear();
 
                     if (!isPushing) {
                         goto outer;
