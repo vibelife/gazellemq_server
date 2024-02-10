@@ -1,7 +1,7 @@
 #ifndef GAZELLEMQ_SERVER_PUSHSERVICE_HPP
 #define GAZELLEMQ_SERVER_PUSHSERVICE_HPP
 
-#include <condition_variable>
+
 #include <thread>
 #include "../lib/MPMCQueue/MPMCQueue.hpp"
 #include "Message.hpp"
@@ -15,12 +15,7 @@ namespace gazellemq::server {
     private:
         std::vector<MessageSubscriber*> subscribers;
         rigtorp::MPMCQueue<MessageChunk> messageQueue;
-
-        //std::mutex mQueue;
-        //std::condition_variable cvQueue;
         std::atomic_flag afQueue{false};
-
-        //std::atomic_flag hasPendingData{false};
         std::atomic_flag isRunning{true};
         std::jthread bgThread;
     public:
@@ -129,16 +124,8 @@ namespace gazellemq::server {
 
                 outer:
                 while (isRunning.test()) {
-                    //std::unique_lock uniqueLock{mQueue};
-                    //bool didTimeout{!cvQueue.wait_for(uniqueLock, 2s, [this]() { return hasPendingData.test(); })};
                     afQueue.wait(false);
 
-                    //uniqueLock.unlock();
-
-                    //if (didTimeout) {
-                    //    doSubscriberCleanUp();
-                    //    goto outer;
-                    //}
                     doSubscriberCleanUp();
 
                     bool isPushing{};
@@ -152,12 +139,6 @@ namespace gazellemq::server {
                         }
                     }
 
-                    //{
-                    //    std::lock_guard lockGuard{mQueue};
-                    //    if (messageQueue.empty()) {
-                    //        hasPendingData.clear();
-                    //    }
-                    //}
                     afQueue.clear();
 
                     if (!isPushing) {
