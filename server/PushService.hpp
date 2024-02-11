@@ -38,15 +38,7 @@ namespace gazellemq::server {
          * @param messageContent
          */
         void pushToQueue(std::string const& messageType, char const* buffer, size_t bufferLen) {
-            MessageChunk message{};
-
-            message.messageType.append(messageType);
-            std::memmove(message.content, buffer, bufferLen);
-            message.n = bufferLen;
-            message.i = 0;
-
-            messageQueue.push(std::move(message));
-
+            messageQueue.emplace(MessageChunk{messageType, buffer, bufferLen});
             notify();
         }
 

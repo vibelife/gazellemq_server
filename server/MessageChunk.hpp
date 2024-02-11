@@ -18,7 +18,12 @@ namespace gazellemq::server {
             n = 0;
         }
 
-        MessageChunk() = default;
+        MessageChunk() noexcept = default;
+
+        MessageChunk(std::string messageType, char const* buffer, size_t bufferLen) noexcept
+            :messageType(std::move(messageType)), n(bufferLen), i(0) {
+            std::memmove(content, buffer, bufferLen);
+        }
 
         MessageChunk(MessageChunk const& other)  noexcept {
             memmove(this->content, other.content, other.n);
