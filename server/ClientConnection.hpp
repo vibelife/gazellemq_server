@@ -4,8 +4,9 @@
 #include <liburing.h>
 #include <sys/epoll.h>
 #include "EventLoopObject.hpp"
-#include "MessageHandler.hpp"
+#include "SubscriberService.hpp"
 #include "Consts.hpp"
+#include "PublisherService.hpp"
 
 namespace gazellemq::server {
     class ClientConnection: public EventLoopObject {
@@ -26,22 +27,37 @@ namespace gazellemq::server {
         char readBuffer[MAX_READ_BUF]{};
         std::string intent{};
         int fd{};
-        MessageHandler* handler = nullptr;
-
-
+        std::string clientName;
+        bool isZombie{};
     public:
-        virtual ~ClientConnection() {
-            printf("Removing client connection: %s\n", handler->clientName.c_str());
-            delete handler;
+        ClientConnection() = default;
+        ClientConnection(ClientConnection &&other) noexcept {
+            std::swap(this->m_event, other.m_event);
+            std::swap(this->readBuffer, other.readBuffer);
+            std::swap(this->fd, other.fd);
+            std::swap(this->clientName, other.clientName);
+            std::swap(this->isZombie, other.isZombie);
         }
 
+        ClientConnection& operator=(ClientConnection &&other) noexcept {
+            std::swap(this->m_event, other.m_event);
+            std::swap(this->readBuffer, other.readBuffer);
+            std::swap(this->fd, other.fd);
+            std::swap(this->clientName, other.clientName);
+            std::swap(this->isZombie, other.isZombie);
+            return *this;
+        }
+
+        ClientConnection(ClientConnection const& other) = delete;
+        ClientConnection& operator=(ClientConnection const& other) = delete;
+    public:
         void start(struct io_uring* ring, int epfd, int fileDescriptor) {
             this->fd = fileDescriptor;
             beginMakeNonblockingSocket(ring, epfd);
         }
 
         [[nodiscard]] bool getIsZombie() const {
-            return handler != nullptr && handler->getIsZombie();
+            return isZombie;
         }
     private:
         /**
@@ -68,7 +84,7 @@ namespace gazellemq::server {
             ev.events = EPOLLIN | EPOLLOUT;
             ev.data.fd = fd;
             io_uring_prep_epoll_ctl(sqe, epfd, fd, EPOLL_CTL_ADD, &ev);
-            io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
+            io_uring_sqe_set_data(sqe, this);
 
             m_event = ClientConnectEvent_SetNonblockingPublisher;
             io_uring_submit(ring);
@@ -119,13 +135,6 @@ namespace gazellemq::server {
                 if (intent.size() < NB_INTENT_CHARS) {
                     beginReceiveIntent(ring);
                 } else {
-                    // check if this is a subscriber or publisher
-                    if (intent == PUBLISHER_INTENT) {
-                        this->handler = new MessagePublisher(fd);
-                    } else if (intent == SUBSCRIBER_INTENT) {
-                        this->handler = new MessageSubscriber(fd);
-                    }
-
                     // now receive the name from the client
                     memset(readBuffer, 0, MAX_READ_BUF);
                     beginReceiveName(ring);
@@ -153,15 +162,17 @@ namespace gazellemq::server {
          * @param res
          */
         void onReceiveNameComplete(struct io_uring *ring, int res) {
-            handler->clientName.append(readBuffer, res);
-            if (handler->clientName.ends_with("\r")) {
-                handler->clientName.erase(handler->clientName.size() - 1, 1);
-                handler->printHello();
-                handler->handleEvent(ring, 0);
+            clientName.append(readBuffer, res);
+            if (clientName.ends_with("\r")) {
+                clientName.erase(clientName.size() - 1, 1);
 
-                if (handler->isSubscriber()) {
-                    getPushService().registerSubscriber(dynamic_cast<MessageSubscriber *>(this->handler));
+                // check if this is a subscriber or publisher
+                if (intent == PUBLISHER_INTENT) {
+                    getPublisherService().newPublisher(std::move(clientName), fd);
+                } else if (intent == SUBSCRIBER_INTENT) {
+                    getSubscriberService().newSubscriber(std::move(clientName), fd);
                 }
+                isZombie = true;
             } else {
                 beginReceiveName(ring);
             }

@@ -1,9 +1,8 @@
 #ifndef GAZELLEMQ_MESSAGEPUBLISHER_HPP
 #define GAZELLEMQ_MESSAGEPUBLISHER_HPP
 
+#include <functional>
 #include "MessageHandler.hpp"
-#include "PushService.hpp"
-
 #include "Consts.hpp"
 
 namespace gazellemq::server {
@@ -17,7 +16,6 @@ namespace gazellemq::server {
         };
 
         char readBuffer[MAX_READ_BUF]{};
-        std::string content;
 
         MessagePublisherState state{MessagePublisherState_notSet};
 
@@ -31,10 +29,10 @@ namespace gazellemq::server {
 
         std::string messageType;
         std::string messageLengthBuffer;
-        size_t messageContentLength;
+        std::string messageContent;
+        size_t messageContentLength{};
         size_t nbContentBytesRead{};
-        char outBuffer[MAX_OUT_BUF]{};
-        size_t outBufferLen{};
+        std::function<void(std::string const& messageType, std::string && buffer)> fnPushToQueue;
     private:
         /**
          * Disconnects from the server
@@ -43,7 +41,7 @@ namespace gazellemq::server {
         void beginDisconnect(struct io_uring* ring) {
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_close(sqe, fd);
-            io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
+            io_uring_sqe_set_data(sqe, this);
 
             state = MessagePublisherState_disconnect;
             io_uring_submit(ring);
@@ -54,7 +52,6 @@ namespace gazellemq::server {
             markForRemoval();
         }
 
-
         /**
          * Sends an acknowledgement to the client
          * @param ring
@@ -62,7 +59,7 @@ namespace gazellemq::server {
         void beginSendAck(struct io_uring *ring) {
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_send(sqe, fd, "\r", 1, 0);
-            io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
+            io_uring_sqe_set_data(sqe, this);
 
             state = MessagePublisherState_sendAck;
             io_uring_submit(ring);
@@ -80,7 +77,7 @@ namespace gazellemq::server {
             memset(readBuffer, 0, MAX_READ_BUF);
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_recv(sqe, fd, readBuffer, MAX_READ_BUF, 0);
-            io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
+            io_uring_sqe_set_data(sqe, this);
 
             state = MessagePublisherState_receiveData;
             io_uring_submit(ring);
@@ -92,10 +89,10 @@ namespace gazellemq::server {
          * @param res
          */
         void onReceiveDataComplete(struct io_uring *ring, int res) {
-            if (res == 0) {
+            if (res <= 0) {
                 // The client has disconnected
                 beginDisconnect(ring);
-            } else {
+            } else if (!mustDisconnect && !isZombie) {
                 streamMessage(readBuffer, res);
 
                 beginReceiveData(ring);
@@ -112,85 +109,110 @@ namespace gazellemq::server {
                 char ch {buffer[i]};
                 if (parseState == ParseState_messageType) {
                     if (ch == '|') {
-                        memmove(&outBuffer[outBufferLen++], "|", 1);
                         parseState = ParseState_messageContentLength;
                         continue;
                     } else {
                         messageType.push_back(ch);
-                        memmove(&outBuffer[outBufferLen++], &ch, 1);
                     }
                 } else if (parseState == ParseState_messageContentLength) {
                     if (ch == '|') {
                         messageContentLength = std::stoul(messageLengthBuffer);
-                        memmove(&outBuffer[outBufferLen++], "|", 1);
                         parseState = ParseState_messageContent;
                         continue;
                     } else {
                         messageLengthBuffer.push_back(ch);
-                        memmove(&outBuffer[outBufferLen++], &ch, 1);
                     }
                 } else if (parseState == ParseState_messageContent) {
                     size_t nbCharsNeeded {messageContentLength - nbContentBytesRead};
                     // add as many characters as possible in bulk
 
                     if ((i + nbCharsNeeded) <= bufferLength) {
+                        messageContent.append(&buffer[i], nbCharsNeeded);
                         // do nothing here for now
                     } else {
                         nbCharsNeeded = bufferLength - i;
+                        messageContent.append(&buffer[i], nbCharsNeeded);
                     }
 
                     nbContentBytesRead += nbCharsNeeded;
-                    addToOutBuffer(&buffer[i], nbCharsNeeded);
+                    // addToOutBuffer(&buffer[i], nbCharsNeeded,  !lastMessageType.empty() && (lastMessageType != messageType), bufferLength > (i + nbCharsNeeded));
                     i += nbCharsNeeded - 1;
 
                     if (messageContentLength == nbContentBytesRead) {
                         // Done parsing
+                        std::string message{};
+                        message.append(messageType);
+                        message.push_back('|');
+                        message.append(messageLengthBuffer);
+                        message.push_back('|');
+                        message.append(messageContent);
 
+                        fnPushToQueue(messageType, std::move(message));
                         messageContentLength = 0;
                         nbContentBytesRead = 0;
                         messageLengthBuffer.clear();
                         messageType.clear();
+                        messageContent.clear();
                         parseState = ParseState_messageType;
                     }
                 }
             }
         }
 
-        void addToOutBuffer(char const* buffer, size_t len) {
-            size_t nbChars{len};
-            size_t i{0};
-            size_t nbCharsToAdd{0};
+    public:
+        explicit MessagePublisher(
+                int fileDescriptor,
+                std::string&& name,
+                std::function<void(std::string const& messageType, std::string && buffer)>&& fnPushToQueue
+            )
+            :MessageHandler(fileDescriptor, std::move(name)), fnPushToQueue(std::move(fnPushToQueue))
+        {}
 
-            while (nbChars > 0) {
-                if ((outBufferLen + nbChars) > MAX_OUT_BUF) {
-                    nbCharsToAdd = MAX_OUT_BUF - outBufferLen;
-                } else {
-                    nbCharsToAdd = nbChars;
-                }
+        MessagePublisher(MessagePublisher &&other) noexcept: MessageHandler(other.fd) {
+            std::swap(this->readBuffer, other.readBuffer);
+            std::swap(this->state, other.state);
+            std::swap(this->parseState, other.parseState);
+            std::swap(this->messageType, other.messageType);
+            std::swap(this->messageLengthBuffer, other.messageLengthBuffer);
+            std::swap(this->messageContentLength, other.messageContentLength);
+            std::swap(this->nbContentBytesRead, other.nbContentBytesRead);
+            std::swap(this->fnPushToQueue, other.fnPushToQueue);
 
-                memmove(&outBuffer[outBufferLen], &buffer[i], nbCharsToAdd);
-                outBufferLen += nbCharsToAdd;
-                i += nbCharsToAdd;
-                nbChars -= nbCharsToAdd;
-
-                if (outBufferLen == MAX_OUT_BUF || (nbChars <= 0 && messageContentLength == nbContentBytesRead)) {
-                    getPushService().pushToQueue(messageType, outBuffer, outBufferLen);
-
-                    memset(outBuffer, 0, MAX_OUT_BUF);
-                    outBufferLen = 0;
-                }
-            }
+            std::swap(this->clientName, other.clientName);
+            std::swap(this->fd, other.fd);
+            std::swap(this->isZombie, other.isZombie);
+            std::swap(this->mustDisconnect, other.mustDisconnect);
         }
 
-    public:
-        explicit MessagePublisher(int fileDescriptor)
-            :MessageHandler(fileDescriptor)
-        {}
+        MessagePublisher& operator=(MessagePublisher &&other) noexcept {
+            std::swap(this->readBuffer, other.readBuffer);
+            std::swap(this->state, other.state);
+            std::swap(this->parseState, other.parseState);
+            std::swap(this->messageType, other.messageType);
+            std::swap(this->messageLengthBuffer, other.messageLengthBuffer);
+            std::swap(this->messageContentLength, other.messageContentLength);
+            std::swap(this->nbContentBytesRead, other.nbContentBytesRead);
+            std::swap(this->fnPushToQueue, other.fnPushToQueue);
+
+            std::swap(this->clientName, other.clientName);
+            std::swap(this->fd, other.fd);
+            std::swap(this->isZombie, other.isZombie);
+            std::swap(this->mustDisconnect, other.mustDisconnect);
+            return *this;
+        }
+
+        MessagePublisher(MessagePublisher const& other) = default;
+        MessagePublisher& operator=(MessagePublisher const& other) = delete;
 
         ~MessagePublisher() override = default;
 
         void printHello() const override {
             printf("Publisher connected - %s\n", clientName.c_str());
+        }
+
+        void disconnect(struct io_uring *ring) {
+            mustDisconnect = false;
+            beginDisconnect(ring);
         }
 
         /**

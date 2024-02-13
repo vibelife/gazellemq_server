@@ -7,13 +7,18 @@ namespace gazellemq::server {
     class MessageHandler : public EventLoopObject {
     public:
         std::string clientName;
-        const int fd;
+        int fd{};
     protected:
         bool isZombie{};
+        bool mustDisconnect{};
 
     public:
         explicit MessageHandler(int fileDescriptor)
                 :fd(fileDescriptor)
+        {}
+
+        MessageHandler(int fileDescriptor, std::string &&clientName)
+                :fd(fileDescriptor), clientName(std::move(clientName))
         {}
 
         /**
@@ -25,12 +30,26 @@ namespace gazellemq::server {
         }
 
         /**
+         * Returns true if this handler needs to disconnect
+         * @return
+         */
+        [[nodiscard]] bool getMustDisconnect() const {
+            return mustDisconnect;
+        }
+
+        /**
          * This subscriber becomes inactive, then eventually deleted.
          */
         void markForRemoval() {
             if (!isZombie) {
                 isZombie = true;
                 clientName.append(" [Zombie]");
+            }
+        }
+
+        void forceDisconnect() {
+            if (!mustDisconnect) {
+                mustDisconnect = true;
             }
         }
 

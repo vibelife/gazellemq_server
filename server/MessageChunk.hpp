@@ -8,7 +8,8 @@
 namespace gazellemq::server {
     struct MessageChunk {
         std::string messageType;
-        char content[MAX_OUT_BUF]{};
+        std::string content;
+        // char content[MAX_OUT_BUF]{};
 
         size_t i{};
         size_t n{};
@@ -20,13 +21,12 @@ namespace gazellemq::server {
 
         MessageChunk() noexcept = default;
 
-        MessageChunk(std::string messageType, char const* buffer, size_t bufferLen) noexcept
-            :messageType(std::move(messageType)), n(bufferLen), i(0) {
-            std::memmove(content, buffer, bufferLen);
-        }
+        MessageChunk(std::string messageType, std::string const& buffer) noexcept
+            :messageType(std::move(messageType)), n(buffer.size()), content(buffer), i(0)
+            {}
 
         MessageChunk(MessageChunk const& other)  noexcept {
-            memmove(this->content, other.content, other.n);
+            this->content.append(other.content);
             this->messageType.append(other.messageType);
             this->i = other.i;
             this->n = other.n;
@@ -53,7 +53,7 @@ namespace gazellemq::server {
                 return *this;
             }
 
-            memmove(this->content, other.content, other.n);
+            this->content.append(other.content);
             this->messageType.append(other.messageType);
             this->i = other.i;
             this->n = other.n;

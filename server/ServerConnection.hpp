@@ -22,7 +22,7 @@ namespace gazellemq::server {
         int epfd{};
         struct sockaddr_in clientAddr{};
         socklen_t clientAddrLen = sizeof(clientAddr);
-        std::vector<ClientConnection*> clientConnections{};
+        std::vector<ClientConnection> clientConnections{};
 
     private:
         /**
@@ -116,48 +116,25 @@ namespace gazellemq::server {
                 // listen for more connections
                 beginAcceptConnection(ring);
 
-                // A publisher has connected
-                auto* client = new ClientConnection();
-                clientConnections.emplace_back(client);
-                client->start(ring, epfd, res);
+                // A client has connected
+                clientConnections.emplace_back();
+                clientConnections.back().start(ring, epfd, res);
             }
         }
 
-        void onClientDisconnected(ClientConnection* clientConnection) {
-
+    public:
+        void setPort(int value) {
+            this->port = value;
         }
 
-    public:
-        ServerConnection(int port): port(port) {}
-
-        ~ServerConnection() {
-            std::for_each(clientConnections.begin(), clientConnections.end(), [](auto& o) {delete o;});
-            clientConnections.clear();
-        }
-
-    public:
         /**
          * Removes inactive client connections
          */
         void doClientConnectionCleanUp() {
-            bool mustRemove{};
-            size_t i{clientConnections.size()};
-            while (i > 0) {
-                --i;
-
-                if (clientConnections[i]->getIsZombie()) {
-                    delete clientConnections[i];
-                    clientConnections[i] = nullptr;
-                    mustRemove = true;
-                }
-            }
-
-            if (mustRemove) {
-                clientConnections.erase(
-                        std::remove_if(clientConnections.begin(), clientConnections.end(), [](ClientConnection *o) {
-                            return o == nullptr;
-                        }), clientConnections.end());
-            }
+            clientConnections.erase(
+                    std::remove_if(clientConnections.begin(), clientConnections.end(), [](ClientConnection& o) {
+                        return o.getIsZombie();
+                    }), clientConnections.end());
         }
 
         void handleEvent(struct io_uring *ring, int res) override {

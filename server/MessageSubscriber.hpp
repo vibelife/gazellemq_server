@@ -5,7 +5,6 @@
 #include "MessageHandler.hpp"
 #include "Consts.hpp"
 #include "StringUtils.hpp"
-#include "PushService.hpp"
 #include "MessageChunk.hpp"
 
 namespace gazellemq::server {
@@ -34,7 +33,7 @@ namespace gazellemq::server {
             memset(readBuffer, 0, MAX_READ_BUF);
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_recv(sqe, fd, readBuffer, MAX_READ_BUF, 0);
-            io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
+            io_uring_sqe_set_data(sqe, this);
 
             state = MessageSubscriberState_receiveSubscriptions;
             io_uring_submit(ring);
@@ -63,7 +62,7 @@ namespace gazellemq::server {
         void beginSendAck(struct io_uring *ring) {
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_send(sqe, fd, "\r", 1, 0);
-            io_uring_sqe_set_data(sqe, (EventLoopObject*)this);
+            io_uring_sqe_set_data(sqe, this);
 
             state = MessageSubscriberState_sendAck;
             io_uring_submit(ring);
@@ -73,9 +72,45 @@ namespace gazellemq::server {
             beginReceiveSubscriptions(ring);
         }
     public:
-        explicit MessageSubscriber(int fileDescriptor)
-                :MessageHandler(fileDescriptor)
+        explicit MessageSubscriber(
+                int fileDescriptor,
+                std::string&& name
+            )
+                :MessageHandler(fileDescriptor, std::move(name))
         {}
+
+        MessageSubscriber(MessageSubscriber &&other) noexcept: MessageHandler(other.fd) {
+            std::swap(this->state, other.state);
+            std::swap(this->subscriptions, other.subscriptions);
+            std::swap(this->readBuffer, other.readBuffer);
+            std::swap(this->subscriptionsBuffer, other.subscriptionsBuffer);
+            std::swap(this->pendingChunks, other.pendingChunks);
+            std::swap(this->currentChunk, other.currentChunk);
+
+            std::swap(this->clientName, other.clientName);
+            std::swap(this->fd, other.fd);
+            std::swap(this->isZombie, other.isZombie);
+            std::swap(this->mustDisconnect, other.mustDisconnect);
+        }
+
+        MessageSubscriber& operator=(MessageSubscriber &&other) noexcept {
+            std::swap(this->state, other.state);
+            std::swap(this->subscriptions, other.subscriptions);
+            std::swap(this->readBuffer, other.readBuffer);
+            std::swap(this->subscriptionsBuffer, other.subscriptionsBuffer);
+            std::swap(this->pendingChunks, other.pendingChunks);
+            std::swap(this->currentChunk, other.currentChunk);
+
+            std::swap(this->clientName, other.clientName);
+            std::swap(this->fd, other.fd);
+            std::swap(this->isZombie, other.isZombie);
+            std::swap(this->mustDisconnect, other.mustDisconnect);
+
+            return *this;
+        }
+
+        MessageSubscriber(MessageSubscriber const& other) = default;
+        MessageSubscriber& operator=(MessageSubscriber const& other) = delete;
 
         ~MessageSubscriber() override = default;
 
@@ -92,7 +127,7 @@ namespace gazellemq::server {
          * @return
          */
         [[nodiscard]] bool isIdle() const {
-            return (currentChunk.n == 0) && pendingChunks.empty();
+            return (currentChunk.n == 0) && pendingChunks.empty() && state == MessageSubscriberState_ready;
         }
 
         /**
@@ -105,7 +140,7 @@ namespace gazellemq::server {
                 currentChunk = chunk;
                 sendCurrentChunk(ring);
             } else if (currentChunk.n > currentChunk.i) {
-                pendingChunks.emplace_back(chunk);
+                pendingChunks.push_back(chunk);
             }
         }
 
@@ -142,7 +177,6 @@ namespace gazellemq::server {
                         sendCurrentChunk(ring);
                     } else {
                         state = MessageSubscriberState_ready;
-
                     }
                 } else {
                     sendCurrentChunk(ring);

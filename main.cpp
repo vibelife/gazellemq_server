@@ -3,6 +3,6 @@
 
 int main() {
     gazellemq::server::Hub hub;
-    hub.start(5875, 8192);
+    hub.start(5875, 16);
     return 0;
 }

@@ -17,28 +17,24 @@
 namespace gazellemq::server {
     class Hub {
     private:
-        static constexpr auto NB_EVENTS = 128;
-        ServerConnection* serverConnection{};
+        static constexpr auto NB_EVENTS = 16;
+        ServerConnection serverConnection{};
         struct io_uring ring{};
 
     public:
-        ~Hub() {
-            delete serverConnection;
-        }
-
         void start(int port, size_t const queueDepth) {
             signal(SIGINT, sigintHandler);
 
-            getPushService().go();
+            getSubscriberService().go();
+            getPublisherService().go();
 
             io_uring_queue_init(queueDepth, &ring, 0);
 
-            serverConnection = new ServerConnection{port};
-            serverConnection->handleEvent(&ring, 0);
+            serverConnection.setPort(port);
+            serverConnection.handleEvent(&ring, 0);
 
             doEventLoop();
         }
-
     private:
         /**
          * Error handler
@@ -101,7 +97,7 @@ namespace gazellemq::server {
 
                 if (ret < 0) {
                     if (ret == TIMEOUT) {
-                        serverConnection->doClientConnectionCleanUp();
+                        serverConnection.doClientConnectionCleanUp();
                         continue;
                     } else {
                         printError("io_uring_wait_cqe_timeout(...)", ret);
