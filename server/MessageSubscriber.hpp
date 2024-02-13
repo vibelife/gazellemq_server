@@ -135,12 +135,31 @@ namespace gazellemq::server {
          * @param ring
          * @param chunk
          */
-        void push(struct io_uring *ring, MessageChunk const& chunk) {
-            if (currentChunk.n == 0) {
-                currentChunk = chunk;
-                sendCurrentChunk(ring);
-            } else if (currentChunk.n > currentChunk.i) {
+        void push(MessageChunk const& chunk) {
+            if (!currentChunk.tryAppend(chunk)) {
                 pendingChunks.push_back(chunk);
+            }
+        }
+
+        void send(struct io_uring *ring) {
+            if ((!currentChunk.isBusy) && currentChunk.i == 0 && currentChunk.n > 0) {
+                currentChunk.isBusy = true;
+                sendCurrentChunk(ring);
+            }
+        }
+
+        void sendNextPendingChunks(struct io_uring *ring) {
+            std::for_each(pendingChunks.begin(), pendingChunks.end(), [this](MessageChunk& chunk) {
+                currentChunk.tryTake(chunk);
+            });
+            pendingChunks.erase(
+                    std::remove_if(pendingChunks.begin(), pendingChunks.end(), [](auto& o) { return o.getCanRemove();}),
+                    pendingChunks.end()
+            );
+
+            if (!currentChunk.content.empty()) {
+                currentChunk.isBusy = true;
+                sendCurrentChunk(ring);
             }
         }
 
@@ -168,13 +187,12 @@ namespace gazellemq::server {
                 currentChunk.i += res;
                 currentChunk.n -= res;
                 if (currentChunk.n == 0) {
+                    currentChunk.clear();
                     // To get here means we've sent all the data
 
-                    // go to the next chunk if one exists
+                    // collect the next chunks
                     if (!pendingChunks.empty()) {
-                        currentChunk = std::move(pendingChunks.front());
-                        pendingChunks.pop_front();
-                        sendCurrentChunk(ring);
+                        sendNextPendingChunks(ring);
                     } else {
                         state = MessageSubscriberState_ready;
                     }

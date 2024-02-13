@@ -72,13 +72,15 @@ namespace gazellemq::server {
 
                     onBeforeHandleMessages(&ring);
 
-                    bool isPushing{};
                     MessageChunk message;
                     while (messageQueue.try_pop(message)) {
                         for (MessageSubscriber& subscriber : subscribers) {
                             if (subscriber.isSubscribed(message.messageType)) {
-                                subscriber.push(&ring, message);
+                                subscriber.push(message);
                             }
+                        }
+                        for (MessageSubscriber& subscriber : subscribers) {
+                            subscriber.send(&ring);
                         }
                     }
 
