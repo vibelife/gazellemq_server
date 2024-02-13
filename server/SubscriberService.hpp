@@ -4,18 +4,17 @@
 
 #include <thread>
 #include "../lib/MPMCQueue/MPMCQueue.hpp"
-#include "Message.hpp"
 #include "Consts.hpp"
-#include "MessageChunk.hpp"
+#include "Message.hpp"
 #include "MessageSubscriber.hpp"
-#include "MessageChunkQueue.hpp"
+#include "MessageQueue.hpp"
 
 
 namespace gazellemq::server {
     class SubscriberService {
     private:
         std::vector<MessageSubscriber> subscribers;
-        MessageChunkQueue& messageQueue;
+        MessageQueue& messageQueue;
         std::atomic_flag hasNewSubscribers{false};
         std::atomic_flag isRunning{true};
         std::jthread bgThread;
@@ -55,7 +54,7 @@ namespace gazellemq::server {
             bgThread = std::jthread{[this]() {
                 printf("SubscriberService running in background thread.\n");
 
-                constexpr static size_t NB_EVENTS = 16;
+                constexpr static size_t NB_EVENTS = 32;
                 io_uring ring{};
                 io_uring_queue_init(NB_EVENTS, &ring, 0);
 
@@ -72,15 +71,12 @@ namespace gazellemq::server {
 
                     onBeforeHandleMessages(&ring);
 
-                    MessageChunk message;
+                    Message message;
                     while (messageQueue.try_pop(message)) {
                         for (MessageSubscriber& subscriber : subscribers) {
-                            if (subscriber.isSubscribed(message.messageType)) {
-                                subscriber.push(message);
+                            if (subscriber.isSubscribed(message.getMessageType())) {
+                                subscriber.pushMessage(&ring, message);
                             }
-                        }
-                        for (MessageSubscriber& subscriber : subscribers) {
-                            subscriber.send(&ring);
                         }
                     }
 

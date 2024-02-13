@@ -10,14 +10,14 @@
 
 #include "../lib/MPMCQueue/MPMCQueue.hpp"
 #include "MessagePublisher.hpp"
-#include "MessageChunk.hpp"
-#include "MessageChunkQueue.hpp"
+#include "Message.hpp"
+#include "MessageQueue.hpp"
 
 namespace gazellemq::server {
     class PublisherService {
     private:
         std::vector<MessagePublisher> publishers;
-        MessageChunkQueue& messageQueue;
+        MessageQueue& messageQueue;
         std::atomic_flag hasNewPublishers{false};
         std::atomic_flag isRunning{true};
         std::jthread bgThread;
@@ -38,7 +38,7 @@ namespace gazellemq::server {
          * @param messageContent
          */
         void pushToQueue(std::string const &messageType, std::string && buffer) {
-            messageQueue.push_back(MessageChunk{messageType, buffer});
+            messageQueue.push_back(Message{messageType, buffer});
         }
 
         /**
@@ -69,7 +69,7 @@ namespace gazellemq::server {
         }
     public:
         /**
-         * Registers a publisher so it can send messages
+         * Registers a publisher so it can sendMessage messages
          * @param name
          * @param fd
          */
@@ -95,7 +95,7 @@ namespace gazellemq::server {
             bgThread = std::jthread{[this]() {
                 printf("PublisherService running in background thread.\n");
 
-                constexpr static size_t NB_EVENTS = 16;
+                constexpr static size_t NB_EVENTS = 32;
                 io_uring ring{};
                 io_uring_queue_init(NB_EVENTS, &ring, 0);
 
