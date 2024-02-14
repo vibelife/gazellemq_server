@@ -119,20 +119,16 @@ namespace gazellemq::server {
                         goto outer;
                     }
 
-                    for (auto& cqe: cqes) {
+                    std::for_each(cqes.begin(), cqes.end(), [&ring](io_uring_cqe* cqe) {
                         if (cqe != nullptr) {
                             int res = cqe->res;
-                            if (res == -EAGAIN) {
-                                io_uring_cqe_seen(&ring, cqe);
-                                continue;
+                            if (res != -EAGAIN) {
+                                auto *pSubscriber = static_cast<MessagePublisher *>(io_uring_cqe_get_data(cqe));
+                                pSubscriber->handleEvent(&ring, res);
                             }
-
-                            auto* pSubscriber = static_cast<MessagePublisher*>(io_uring_cqe_get_data(cqe));
-                            pSubscriber->handleEvent(&ring, res);
+                            io_uring_cqe_seen(&ring, cqe);
                         }
-                        io_uring_cqe_seen(&ring, cqe);
-                    }
-
+                    });
                 }
             }};
         }
