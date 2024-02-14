@@ -16,8 +16,8 @@ namespace gazellemq::server {
     public:
         Message() noexcept = default;;
 
-        Message(std::string messageType, std::string const& buffer) noexcept
-            : messageType(std::move(messageType)), n(buffer.size()), content(buffer), i(0)
+        Message(std::string messageType, std::string const& messageContent) noexcept
+            : messageType(std::move(messageType)), n(messageContent.size()), content(messageContent), i(0)
             {}
 
         Message(Message const& other)  noexcept {

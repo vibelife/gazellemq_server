@@ -20,12 +20,12 @@ namespace gazellemq::server {
             MessageSubscriberState_zombie,
         };
 
-        MessageSubscriberState state{MessageSubscriberState_notSet};
+        MessageSubscriberState state{};
         std::vector<std::string> subscriptions;
         char readBuffer[MAX_READ_BUF]{};
         std::string subscriptionsBuffer;
-        std::list<Message> pendingMessages;
-        Message currentMessage{};
+        std::list<MessageBatch> pendingItems;
+        MessageBatch currentItem{};
     private:
         /**
          * Receives subscriptions from the subscriber
@@ -86,8 +86,8 @@ namespace gazellemq::server {
             std::swap(this->subscriptions, other.subscriptions);
             std::swap(this->readBuffer, other.readBuffer);
             std::swap(this->subscriptionsBuffer, other.subscriptionsBuffer);
-            std::swap(this->pendingMessages, other.pendingMessages);
-            std::swap(this->currentMessage, other.currentMessage);
+            std::swap(this->pendingItems, other.pendingItems);
+            std::swap(this->currentItem, other.currentItem);
 
             std::swap(this->clientName, other.clientName);
             std::swap(this->fd, other.fd);
@@ -100,8 +100,8 @@ namespace gazellemq::server {
             std::swap(this->subscriptions, other.subscriptions);
             std::swap(this->readBuffer, other.readBuffer);
             std::swap(this->subscriptionsBuffer, other.subscriptionsBuffer);
-            std::swap(this->pendingMessages, other.pendingMessages);
-            std::swap(this->currentMessage, other.currentMessage);
+            std::swap(this->pendingItems, other.pendingItems);
+            std::swap(this->currentItem, other.currentItem);
 
             std::swap(this->clientName, other.clientName);
             std::swap(this->fd, other.fd);
@@ -148,29 +148,29 @@ namespace gazellemq::server {
          * @return
          */
         [[nodiscard]] bool isIdle() const {
-            return currentMessage.isDone() && pendingMessages.empty() && (state == MessageSubscriberState_ready || state == MessageSubscriberState_zombie);
+            return currentItem.getIsDone() && pendingItems.empty() && (state == MessageSubscriberState_ready || state == MessageSubscriberState_zombie);
         }
 
         /**
          * Sends the data to the subscriber, or queues it to be sent later.
          * @param ring
-         * @param chunk
+         * @param batch
          */
-        void pushMessage(struct io_uring *ring, Message const& chunk) {
-            if (!currentMessage.hasContent()) {
-                currentMessage = chunk;
+        void pushMessageBatch(struct io_uring *ring, MessageBatch const& batch) {
+            if (!currentItem.hasContent()) {
+                currentItem.copy(batch);
                 sendCurrentMessage(ring);
             } else {
-                pendingMessages.push_back(chunk);
+                pendingItems.push_back(batch.copy());
             }
         }
 
-        void sendNextPendingMessage(struct io_uring *ring) {
-            currentMessage = std::move(pendingMessages.front());
-            pendingMessages.pop_front();
+        void sendNextPendingMessageBatch(struct io_uring *ring) {
+            currentItem = std::move(pendingItems.front());
+            pendingItems.pop_front();
 
-            if (currentMessage.hasContent()) {
-                currentMessage.setBusy();
+            if (currentItem.hasContent()) {
+                currentItem.setBusy();
                 sendCurrentMessage(ring);
             }
         }
@@ -181,7 +181,7 @@ namespace gazellemq::server {
          */
         void sendCurrentMessage(struct io_uring *ring) {
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
-            io_uring_prep_send(sqe, fd, currentMessage.getContentRemaining(), currentMessage.getContentRemainingLength(), 0);
+            io_uring_prep_send(sqe, fd, currentItem.getBufferRemaining(), currentItem.getBufferLength(), 0);
 
             state = MessageSubscriberState_sendData;
             io_uring_sqe_set_data(sqe, this);
@@ -196,14 +196,14 @@ namespace gazellemq::server {
          */
         void onSendCurrentMessageComplete(struct io_uring *ring, int res) {
             if (res > -1) {
-                currentMessage.advance(res);
-                if (currentMessage.isDone()) {
-                    currentMessage.clear();
+                currentItem.advance(res);
+                if (currentItem.getIsDone()) {
+                    currentItem.clearForNextMessage();
                     // To get here means we've sent all the data
 
-                    // collect the next chunks
-                    if (!pendingMessages.empty()) {
-                        sendNextPendingMessage(ring);
+                    // collect the next messages
+                    if (!pendingItems.empty()) {
+                        sendNextPendingMessageBatch(ring);
                     } else {
                         state = MessageSubscriberState_ready;
                     }

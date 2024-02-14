@@ -7,7 +7,7 @@
 namespace gazellemq::server {
     class MessageQueue {
     private:
-        rigtorp::MPMCQueue<Message> messageQueue;
+        rigtorp::MPMCQueue<MessageBatch> messageQueue;
     public:
         std::atomic_flag afQueue{false};
     public:
@@ -15,13 +15,13 @@ namespace gazellemq::server {
             :messageQueue(messageQueueDepth)
         {}
     public:
-        void push_back(Message &&chunk) {
+        void push_back(MessageBatch &&chunk) {
             messageQueue.push(std::move(chunk));
             afQueue.test_and_set();
             afQueue.notify_one();
         }
 
-        bool try_pop(Message& chunk) {
+        bool try_pop(MessageBatch& chunk) {
             return messageQueue.try_pop(chunk);
         }
     };

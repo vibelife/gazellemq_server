@@ -85,11 +85,11 @@ namespace gazellemq::server {
 
                     onBeforeHandleMessages(&ring);
 
-                    Message message;
-                    while (messageQueue.try_pop(message)) {
-                        std::for_each(subscribers.begin(), subscribers.end(), [&message, &ring](MessageSubscriber& subscriber) {
-                            if (subscriber.isSubscribed(message.getMessageType())) {
-                                subscriber.pushMessage(&ring, message);
+                    MessageBatch batch;
+                    while (messageQueue.try_pop(batch)) {
+                        std::for_each(subscribers.begin(), subscribers.end(), [&batch, &ring](MessageSubscriber& subscriber) {
+                            if (subscriber.isSubscribed(batch.getMessageType())) {
+                                subscriber.pushMessageBatch(&ring, batch);
                             }
                         });
                     }

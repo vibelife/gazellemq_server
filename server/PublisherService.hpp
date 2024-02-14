@@ -35,10 +35,10 @@ namespace gazellemq::server {
         /**
          * Pushes the message to the queue. Messages are sent to subscribers in a background thread.
          * @param messageType
-         * @param messageContent
+         * @param batch
          */
-        void pushToQueue(std::string const &messageType, std::string && buffer) {
-            messageQueue.push_back(Message{messageType, buffer});
+        void pushToQueue(MessageBatch&& batch) {
+            messageQueue.push_back(std::move(batch));
         }
 
         /**
@@ -74,8 +74,8 @@ namespace gazellemq::server {
          * @param fd
          */
         void newPublisher(std::string &&name, int fd) {
-            MessagePublisher publisher{fd, std::move(name), [this](std::string const& messageType, std::string && buffer) {
-                this->pushToQueue(messageType, std::move(buffer));
+            MessagePublisher publisher{fd, std::move(name), [this](MessageBatch&& batch) {
+                this->pushToQueue(std::move(batch));
             }};
 
             // other publishers with the same name will be removed

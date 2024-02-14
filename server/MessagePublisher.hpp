@@ -4,6 +4,7 @@
 #include <functional>
 #include "MessageHandler.hpp"
 #include "Consts.hpp"
+#include "MessageBatch.hpp"
 
 namespace gazellemq::server {
     class MessagePublisher : public MessageHandler {
@@ -18,7 +19,7 @@ namespace gazellemq::server {
 
         char readBuffer[MAX_READ_BUF]{};
 
-        MessagePublisherState state{MessagePublisherState_notSet};
+        MessagePublisherState state{};
 
         enum ParseState {
             ParseState_messageType,
@@ -26,14 +27,18 @@ namespace gazellemq::server {
             ParseState_messageContent,
         };
 
-        ParseState parseState{ParseState_messageType};
+        ParseState parseState{};
 
         std::string messageType;
         std::string messageLengthBuffer;
         std::string messageContent;
         size_t messageContentLength{};
         size_t nbContentBytesRead{};
-        std::function<void(std::string const& messageType, std::string && buffer)> fnPushToQueue;
+
+        MessageBatch currentBatch{};
+        MessageBatch nextBatch{};
+
+        std::function<void(MessageBatch&& batch)> fnPushToQueue;
     private:
         /**
          * Disconnects from the server
@@ -148,7 +153,23 @@ namespace gazellemq::server {
                         message.push_back('|');
                         message.append(messageContent);
 
-                        fnPushToQueue(messageType, std::move(message));
+                        if (currentBatch.getMessageType().empty()) {
+                            currentBatch.setMessageType(messageType);
+                        } else if ((currentBatch.getMessageType() != messageType) || (currentBatch.isFull())) {
+                            fnPushToQueue(std::move(currentBatch));
+                            currentBatch.clearForNextMessage();
+                            currentBatch.setMessageType(messageType);
+                        }
+
+                        currentBatch.append(std::move(message));
+
+                        if (i == (bufferLength-1)) {
+                            fnPushToQueue(std::move(currentBatch));
+                            currentBatch.clearForNextMessage();
+                        }
+
+
+                        // fnPushToQueue(messageType, std::move(message));
                         messageContentLength = 0;
                         nbContentBytesRead = 0;
                         messageLengthBuffer.clear();
@@ -160,49 +181,43 @@ namespace gazellemq::server {
             }
         }
 
+        void swap(MessagePublisher &&other) {
+            std::swap(this->readBuffer, other.readBuffer);
+            std::swap(this->state, other.state);
+            std::swap(this->parseState, other.parseState);
+            std::swap(this->messageType, other.messageType);
+            std::swap(this->messageLengthBuffer, other.messageLengthBuffer);
+            std::swap(this->messageContentLength, other.messageContentLength);
+            std::swap(this->nbContentBytesRead, other.nbContentBytesRead);
+            //std::swap(this->fnPushToQueue, other.fnPushToQueue);
+            std::swap(this->fnPushToQueue, other.fnPushToQueue);
+            std::swap(this->currentBatch, other.currentBatch);
+            std::swap(this->nextBatch, other.nextBatch);
+
+            std::swap(this->clientName, other.clientName);
+            std::swap(this->fd, other.fd);
+            std::swap(this->isZombie, other.isZombie);
+            std::swap(this->isDisconnecting, other.isDisconnecting);
+        }
     public:
         explicit MessagePublisher(
                 int fileDescriptor,
                 std::string&& name,
-                std::function<void(std::string const& messageType, std::string && buffer)>&& fnPushToQueue
+                std::function<void(MessageBatch&& buffer)>&& fnPushToQueue
             )
-            :MessageHandler(fileDescriptor, std::move(name)), fnPushToQueue(std::move(fnPushToQueue))
+            : MessageHandler(fileDescriptor, std::move(name)), fnPushToQueue(std::move(fnPushToQueue))
         {}
 
         MessagePublisher(MessagePublisher &&other) noexcept: MessageHandler(other.fd) {
-            std::swap(this->readBuffer, other.readBuffer);
-            std::swap(this->state, other.state);
-            std::swap(this->parseState, other.parseState);
-            std::swap(this->messageType, other.messageType);
-            std::swap(this->messageLengthBuffer, other.messageLengthBuffer);
-            std::swap(this->messageContentLength, other.messageContentLength);
-            std::swap(this->nbContentBytesRead, other.nbContentBytesRead);
-            std::swap(this->fnPushToQueue, other.fnPushToQueue);
-
-            std::swap(this->clientName, other.clientName);
-            std::swap(this->fd, other.fd);
-            std::swap(this->isZombie, other.isZombie);
-            std::swap(this->isDisconnecting, other.isDisconnecting);
+            this->swap(std::move(other));
         }
 
         MessagePublisher& operator=(MessagePublisher &&other) noexcept {
-            std::swap(this->readBuffer, other.readBuffer);
-            std::swap(this->state, other.state);
-            std::swap(this->parseState, other.parseState);
-            std::swap(this->messageType, other.messageType);
-            std::swap(this->messageLengthBuffer, other.messageLengthBuffer);
-            std::swap(this->messageContentLength, other.messageContentLength);
-            std::swap(this->nbContentBytesRead, other.nbContentBytesRead);
-            std::swap(this->fnPushToQueue, other.fnPushToQueue);
-
-            std::swap(this->clientName, other.clientName);
-            std::swap(this->fd, other.fd);
-            std::swap(this->isZombie, other.isZombie);
-            std::swap(this->isDisconnecting, other.isDisconnecting);
+            this->swap(std::move(other));
             return *this;
         }
 
-        MessagePublisher(MessagePublisher const& other) = default;
+        MessagePublisher(MessagePublisher const& other) = delete;
         MessagePublisher& operator=(MessagePublisher const& other) = delete;
 
         ~MessagePublisher() override = default;
