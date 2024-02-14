@@ -30,23 +30,37 @@ namespace gazellemq::server {
         }
 
         /**
-         * Removes inactive subscribers/publishers, and runs handleEvent(...) on new publishers/subscribers
+         * Removes all zombie subscribers
          */
-        void onBeforeHandleMessages(io_uring* ring) {
+        void killZombies() {
             subscribers.erase(
-                    std::remove_if(subscribers.begin(), subscribers.end(), [](MessageSubscriber const& o) {
-                        if (o.getIsZombie()) {
-                            printf("Remove zombie subscriber [%s]\n", o.clientName.c_str());
-                        }
-                        return o.getIsZombie();
-                    }), subscribers.end());
+                std::remove_if(subscribers.begin(), subscribers.end(), [](MessageSubscriber const& o) {
+                    if (o.getIsZombie()) {
+                        printf("Remove zombie subscriber [%s]\n", o.clientName.c_str());
+                    }
+                    return o.getIsZombie();
+                }), subscribers.end());
+        }
 
+        /**
+         * Initializes all new subscribers
+         * @param ring
+         */
+        void initNewSubscribers(io_uring* ring) {
             if (hasNewSubscribers.test()) {
                 hasNewSubscribers.clear();
                 std::for_each(subscribers.begin(), subscribers.end(), [ring](MessageSubscriber &o) {
                     return o.handleEvent(ring, 0);
                 });
             }
+        }
+
+        /**
+         * Removes inactive subscribers/publishers, and runs handleEvent(...) on new publishers/subscribers
+         */
+        void onBeforeHandleMessages(io_uring* ring) {
+            killZombies();
+            initNewSubscribers(ring);
         }
     public:
         void go() {
@@ -83,11 +97,15 @@ namespace gazellemq::server {
                     messageQueue.afQueue.clear();
 
                     while (isRunning.test()) {
-                        if (std::all_of(subscribers.begin(), subscribers.end(), [](MessageSubscriber const& o) {
-                            return o.isIdle();
-                        })) {
-                            goto outer;
-                        }
+                        bool hasZombies{};
+                        bool allIdle{true};
+                        std::for_each(subscribers.begin(), subscribers.end(), [&hasZombies, &allIdle](MessageSubscriber const& o) {
+                            if (!o.isIdle()) allIdle = false;
+                            if (o.getIsZombie()) hasZombies = true;
+                        });
+
+                        if (hasZombies) killZombies();
+                        if (allIdle) goto outer;
 
                         int ret = io_uring_wait_cqe_timeout(&ring, cqes.data(), &ts);
                         if (ret == -SIGILL || ret == TIMEOUT) {

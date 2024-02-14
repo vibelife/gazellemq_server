@@ -10,7 +10,7 @@ namespace gazellemq::server {
         int fd{};
     protected:
         bool isZombie{};
-        bool mustDisconnect{};
+        bool isDisconnecting{};
 
     public:
         explicit MessageHandler(int fileDescriptor)
@@ -34,7 +34,7 @@ namespace gazellemq::server {
          * @return
          */
         [[nodiscard]] bool getMustDisconnect() const {
-            return mustDisconnect;
+            return isDisconnecting;
         }
 
         /**
@@ -43,13 +43,14 @@ namespace gazellemq::server {
         void markForRemoval() {
             if (!isZombie) {
                 isZombie = true;
+                isDisconnecting = false;
                 clientName.append(" [Zombie]");
             }
         }
 
         void forceDisconnect() {
-            if (!mustDisconnect) {
-                mustDisconnect = true;
+            if (!isDisconnecting) {
+                isDisconnecting = true;
             }
         }
 

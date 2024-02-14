@@ -15,7 +15,9 @@ namespace gazellemq::server {
             MessageSubscriberState_receiveSubscriptions,
             MessageSubscriberState_sendAck,
             MessageSubscriberState_ready,
-            MessageSubscriberState_sendData
+            MessageSubscriberState_sendData,
+            MessageSubscriberState_disconnect,
+            MessageSubscriberState_zombie,
         };
 
         MessageSubscriberState state{MessageSubscriberState_notSet};
@@ -90,7 +92,7 @@ namespace gazellemq::server {
             std::swap(this->clientName, other.clientName);
             std::swap(this->fd, other.fd);
             std::swap(this->isZombie, other.isZombie);
-            std::swap(this->mustDisconnect, other.mustDisconnect);
+            std::swap(this->isDisconnecting, other.isDisconnecting);
         }
 
         MessageSubscriber& operator=(MessageSubscriber &&other) noexcept {
@@ -104,7 +106,7 @@ namespace gazellemq::server {
             std::swap(this->clientName, other.clientName);
             std::swap(this->fd, other.fd);
             std::swap(this->isZombie, other.isZombie);
-            std::swap(this->mustDisconnect, other.mustDisconnect);
+            std::swap(this->isDisconnecting, other.isDisconnecting);
 
             return *this;
         }
@@ -123,11 +125,30 @@ namespace gazellemq::server {
         }
 
         /**
+         * Disconnects from the server
+         * @param ring
+         */
+        virtual void beginDisconnect(struct io_uring* ring) {
+            io_uring_sqe* sqe = io_uring_get_sqe(ring);
+            io_uring_prep_close(sqe, fd);
+            state = MessageSubscriberState_disconnect;
+            io_uring_sqe_set_data(sqe, this);
+
+            io_uring_submit(ring);
+        }
+
+        void onDisconnected(struct io_uring *ring, int res) {
+            printf("A subscriber disconnected [%s]\n", clientName.c_str());
+            state = MessageSubscriberState_zombie;
+            markForRemoval();
+        }
+
+        /**
          * Returns true if this subscriber is not transferring data.
          * @return
          */
         [[nodiscard]] bool isIdle() const {
-            return currentMessage.isDone() && pendingMessages.empty() && state == MessageSubscriberState_ready;
+            return currentMessage.isDone() && pendingMessages.empty() && (state == MessageSubscriberState_ready || state == MessageSubscriberState_zombie);
         }
 
         /**
@@ -191,6 +212,7 @@ namespace gazellemq::server {
                 }
             } else {
                 printError("onSendCurrentMessageComplete", res);
+                beginDisconnect(ring);
             }
         }
 
@@ -214,7 +236,17 @@ namespace gazellemq::server {
             printf("Subscriber connected - %s\n", clientName.c_str());
         }
 
+        /**
+         * Does the appropriate action based on the current state
+         * @param ring
+         * @param res
+         */
         void handleEvent(struct io_uring *ring, int res) override {
+            if (isDisconnecting) {
+                onDisconnected(ring, res);
+                return;
+            }
+
             switch (state) {
                 case MessageSubscriberState_notSet:
                     beginSendAck(ring);
@@ -227,6 +259,9 @@ namespace gazellemq::server {
                     break;
                 case MessageSubscriberState_sendData:
                     onSendCurrentMessageComplete(ring, res);
+                    break;
+                case MessageSubscriberState_disconnect:
+                    onDisconnected(ring, res);
                     break;
                 default:
                     break;
