@@ -95,18 +95,18 @@ namespace gazellemq::server {
                 // The client has disconnected
                 beginDisconnect(ring);
             } else if (!isDisconnecting && !isZombie) {
-                streamMessage(readBuffer, res);
+                forwardMessage(readBuffer, res);
 
                 beginReceiveData(ring);
             }
         }
 
         /**
-         * Streams the message in chunks to subscribers
+         * forwards the message to subscribers
          * @param buffer
          * @param bufferLength
          */
-        void streamMessage(char const* buffer, size_t bufferLength) {
+        void forwardMessage(char const* buffer, size_t bufferLength) {
             for (size_t i{0}; i < bufferLength; ++i) {
                 char ch {buffer[i]};
                 if (parseState == ParseState_messageType) {
