@@ -135,7 +135,6 @@ namespace gazellemq::server {
                     }
 
                     nbContentBytesRead += nbCharsNeeded;
-                    // addToOutBuffer(&buffer[i], nbCharsNeeded,  !lastMessageType.empty() && (lastMessageType != messageType), bufferLength > (i + nbCharsNeeded));
                     i += nbCharsNeeded - 1;
 
                     if (messageContentLength == nbContentBytesRead) {
