@@ -23,6 +23,8 @@ namespace gazellemq::server {
 
     public:
         void start(int port, size_t const queueDepth) {
+            std::cout << "Starting GazelleMQ server on port " << port << std::endl;
+
             signal(SIGINT, sigintHandler);
 
             getSubscriberService().go();
@@ -105,7 +107,7 @@ namespace gazellemq::server {
                     }
                 }
 
-                for (auto *&cqe: cqes) {
+                for (auto* cqe: cqes) {
                     if (cqe != nullptr) {
                         int res = cqe->res;
                         if (res == -EAGAIN) {

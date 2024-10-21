@@ -47,13 +47,17 @@ namespace gazellemq::server {
          * @param res
          */
         void onReceiveSubscriptionsComplete(struct io_uring *ring, int res) {
-            subscriptionsBuffer.append(readBuffer, res);
-            if (subscriptionsBuffer.ends_with('\r')) {
-                subscriptionsBuffer.erase(subscriptionsBuffer.size() - 1, 1);
-                gazellemq::utils::split(std::move(subscriptionsBuffer), subscriptions);
-                state = MessageSubscriberState_ready;
+            if (res == 0) {
+                beginDisconnect(ring);
             } else {
-                beginReceiveSubscriptions(ring);
+                subscriptionsBuffer.append(readBuffer, res);
+                if (subscriptionsBuffer.ends_with('\r')) {
+                    subscriptionsBuffer.erase(subscriptionsBuffer.size() - 1, 1);
+                    gazellemq::utils::split(std::move(subscriptionsBuffer), subscriptions);
+                    state = MessageSubscriberState_ready;
+                } else {
+                    beginReceiveSubscriptions(ring);
+                }
             }
         }
 
