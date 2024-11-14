@@ -17,3 +17,5 @@ CMD ["./gazellemq_server"]
 # docker build -t gazellemq:latest .
 ## then run your containerized gazellemq with the following
 # docker run -p 127.0.0.1:5875:5875 gazellemq:latest
+## or if the process keeps exiting try the following
+# sudo docker run --entrypoint "/bin/sh"  -itd -p 127.0.0.1:5875:5875 dre767/gazellemq:latest
