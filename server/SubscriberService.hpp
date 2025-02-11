@@ -19,7 +19,7 @@ namespace gazellemq::server {
         std::atomic_flag isRunning{true};
         std::jthread bgThread;
     public:
-        explicit SubscriberService():messageQueue(getMessageChunkQueue()) {}
+        explicit SubscriberService():messageQueue(getMessageQueue()) {}
     private:
         /**
          * Error handler

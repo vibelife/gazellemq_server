@@ -13,6 +13,7 @@ EXPOSE 5875
 
 CMD ["./gazellemq_server"]
 
+
 ## make sure you build in release mode then you can build your docker image with the following
 # docker build -t gazellemq:latest .
 ## then run your containerized gazellemq with the following

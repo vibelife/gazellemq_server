@@ -22,7 +22,7 @@ namespace gazellemq::server {
         std::atomic_flag isRunning{true};
         std::jthread bgThread;
     public:
-        explicit PublisherService():messageQueue(getMessageChunkQueue()) {}
+        explicit PublisherService():messageQueue(getMessageQueue()) {}
     private:
         /**
          * Error handler

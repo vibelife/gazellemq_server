@@ -1,6 +1,7 @@
 #ifndef GAZELLEMQ_SERVER_MESSAGEQUEUE_HPP
 #define GAZELLEMQ_SERVER_MESSAGEQUEUE_HPP
 
+#include <condition_variable>
 #include "../lib/MPMCQueue/MPMCQueue.hpp"
 #include "Message.hpp"
 
@@ -10,6 +11,12 @@ namespace gazellemq::server {
         rigtorp::MPMCQueue<MessageBatch> messageQueue;
     public:
         std::atomic_flag afQueue{false};
+
+        std::mutex mQueue;
+        std::condition_variable cvQueue{};
+        std::atomic_flag hasPendingData{false};
+
+        std::atomic_flag isRunning{true};
     public:
         explicit MessageQueue(size_t messageQueueDepth)
             :messageQueue(messageQueueDepth)
@@ -19,6 +26,14 @@ namespace gazellemq::server {
             messageQueue.push(std::move(chunk));
             afQueue.test_and_set();
             afQueue.notify_one();
+
+            {
+                std::lock_guard lock{mQueue};
+                if (!hasPendingData.test()) {
+                    hasPendingData.test_and_set();
+                    cvQueue.notify_all();
+                }
+            }
         }
 
         bool try_pop(MessageBatch& chunk) {
@@ -28,7 +43,7 @@ namespace gazellemq::server {
 
     static inline MessageQueue _mcq{1000000};
 
-    static MessageQueue& getMessageChunkQueue() {
+    static MessageQueue& getMessageQueue() {
         return gazellemq::server::_mcq;
     }
 }

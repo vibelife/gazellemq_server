@@ -13,7 +13,6 @@ namespace gazellemq::server {
     private:
         constexpr static auto PUBLISHER_INTENT = "P\r";
         constexpr static auto SUBSCRIBER_INTENT = "S\r";
-        constexpr static auto BASIC_INTENT = "B\r";
         constexpr static auto NB_INTENT_CHARS = 2;
 
         enum ClientConnectEvent {

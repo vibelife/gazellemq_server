@@ -29,6 +29,7 @@ namespace gazellemq::server {
 
             getSubscriberService().go();
             getPublisherService().go();
+            //getClientService().go();
 
             io_uring_queue_init(queueDepth, &ring, 0);
 
