@@ -897,12 +897,14 @@ namespace gazellemq::server {
 
         bool drainQueue(io_uring* ring, MessageQueue& q) {
             MessageBatch batch;
+            bool retVal {false};
             while (q.try_pop(batch)) {
-                    std::for_each(clients.begin(), clients.end(), [&batch, &ring](SubscriberHandler* subscriber) {
-                        if (subscriber->isSubscribed(batch.getMessageType())) {
-                            subscriber->pushMessageBatch(ring, batch);
-                        }
-                    });
+                retVal = true;
+                std::for_each(clients.begin(), clients.end(), [&batch, &ring](SubscriberHandler* subscriber) {
+                    if (subscriber->isSubscribed(batch.getMessageType())) {
+                        subscriber->pushMessageBatch(ring, batch);
+                    }
+                });
             }
 
             q.afQueue.clear();
@@ -913,6 +915,8 @@ namespace gazellemq::server {
                     q.cvQueue.notify_all();
                 }
             }
+
+            return retVal;
         }
 
         void eventLoop(io_uring* ring, std::vector<io_uring_cqe *>& cqes, __kernel_timespec& ts) {
