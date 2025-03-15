@@ -380,6 +380,7 @@ namespace gazellemq::server {
 
     private:
         void pushToQueue(MessageBatch&& batch) {
+            std::cout << "Pushing message: " << batch.getBufferRemaining() << "\n" << std::endl;
             getMessageQueue().push_back(std::move(batch));
         }
 
