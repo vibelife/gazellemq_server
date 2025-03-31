@@ -134,7 +134,8 @@ namespace gazellemq::server {
 
         /**
          * Registers a subscriber so it can receive messages
-         * @param subscriber
+         * @param name
+         * @param fd
          */
         void newSubscriber(std::string &&name, int fd) {
             MessageSubscriber subscriber{fd, std::move(name)};

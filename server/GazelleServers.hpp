@@ -17,6 +17,8 @@ namespace gazellemq::server {
     protected:
         std::string id{};
     public:
+        virtual ~BaseObject() = default;
+
         BaseObject() {
             id.append(std::to_string(g_id++));
         }
@@ -47,7 +49,7 @@ namespace gazellemq::server {
                 :fd(res)
         {}
 
-        virtual ~PubSubHandler() = default;
+        ~PubSubHandler() override = default;
 
         PubSubHandler(PubSubHandler&& other) noexcept : fd(other.fd) {
             swap(std::move(other));
@@ -139,7 +141,7 @@ namespace gazellemq::server {
         /**
          * Sets the client connection to non blocking
          * @param ring
-         * @param client
+         * @param epfd
          */
         void beginMakeNonblockingSocket(struct io_uring* ring, int epfd) {
             setIsNew(false);
@@ -487,7 +489,7 @@ namespace gazellemq::server {
     };
 
 
-    class SubscriberHandler : public PubSubHandler {
+    class SubscriberHandler final : public PubSubHandler {
     private:
         std::vector<std::string> subscriptions;
         std::string subscriptionsBuffer;
@@ -513,7 +515,7 @@ namespace gazellemq::server {
         }
 
         void printHello() override {
-            std::cout << "A Subscriber has connected\n";
+            std::cout << "A Subscriber has connected" << std::endl;
         }
 
         [[nodiscard]] bool getIsDisconnected() const override {
@@ -706,7 +708,7 @@ namespace gazellemq::server {
             :port(port)
         {}
 
-        virtual ~BaseServer() {
+        ~BaseServer() override {
             while (!clients.empty()) {
                 delete clients.at(0);
                 clients.erase(clients.begin());
@@ -888,7 +890,7 @@ namespace gazellemq::server {
         {}
     protected:
         void printHello() override {
-            std::cout << "Subscriber server started [port " << port << "]" <<std::endl;
+            std::cout << "Subscriber server started [port " << port << "]\n" <<std::endl;
         }
 
         void afterConnectionAccepted(struct io_uring *ring, SubscriberHandler* connection) override {
@@ -1020,7 +1022,7 @@ namespace gazellemq::server {
         {}
     protected:
         void printHello() override {
-            std::cout << "Publisher server started [port " << port << "]" <<std::endl;
+            std::cout << "Publisher server started [port " << port << "]\n" <<std::endl;
         }
 
         void afterConnectionAccepted(struct io_uring *ring, PublisherHandler* connection) override {
