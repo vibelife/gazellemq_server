@@ -1,6 +1,4 @@
-#include <iostream>
 #include <latch>
-#include "server/Hub.hpp"
 #include "server/GazelleServers.hpp"
 
 int main() {

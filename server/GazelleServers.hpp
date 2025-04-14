@@ -1,14 +1,20 @@
 #ifndef GAZELLEMQ_SERVER_GAZELLESERVERS_HPP
 #define GAZELLEMQ_SERVER_GAZELLESERVERS_HPP
 
+#include <iostream>
 #include <liburing.h>
 #include <vector>
 #include <netinet/in.h>
 #include <cstring>
 #include <sys/epoll.h>
 #include <condition_variable>
+#include <list>
 
 #include "Enums.hpp"
+#include "MessageBatch.hpp"
+#include "MessageQueue.hpp"
+#include "StringUtils.hpp"
+#include "../lib/MPMCQueue/MPMCQueue.hpp"
 
 namespace gazellemq::server {
     static std::atomic<int> g_id{0};
@@ -160,7 +166,6 @@ namespace gazellemq::server {
         /**
          * This client must now indicate whether it is a publisher or subscriber
          * @param ring
-         * @param client
          * @param res
          */
         void onMakeNonblockingSocketComplete(struct io_uring* ring, int res) {
@@ -176,7 +181,7 @@ namespace gazellemq::server {
 
         /**
          * Wait for the client to pushToSubscribers indicate whether it is a publisher or subscriber
-         * @param client
+         * @param ring
          */
         void beginReceiveIntent(struct io_uring* ring) {
             memset(readBuffer, 0, MAX_READ_BUF);
@@ -890,7 +895,7 @@ namespace gazellemq::server {
         {}
     protected:
         void printHello() override {
-            std::cout << "Subscriber server started [port " << port << "]\n" <<std::endl;
+            std::cout << "Subscriber server started [port " << port << "]" <<std::endl;
         }
 
         void afterConnectionAccepted(struct io_uring *ring, SubscriberHandler* connection) override {
@@ -1022,7 +1027,7 @@ namespace gazellemq::server {
         {}
     protected:
         void printHello() override {
-            std::cout << "Publisher server started [port " << port << "]\n" <<std::endl;
+            std::cout << "Publisher server started [port " << port << "]" <<std::endl;
         }
 
         void afterConnectionAccepted(struct io_uring *ring, PublisherHandler* connection) override {

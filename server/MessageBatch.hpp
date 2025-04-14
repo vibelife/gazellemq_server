@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Consts.hpp"
+
 namespace gazellemq::server {
     struct MessageBatch {
     private:
@@ -24,7 +26,7 @@ namespace gazellemq::server {
         MessageBatch &operator=(MessageBatch const &) = delete;
 
         MessageBatch(): maxLength(DEFAULT_BUF_LENGTH) {
-            buffer = (char *) calloc(maxLength, sizeof(char));
+            buffer = static_cast<char *>(calloc(maxLength, sizeof(char)));
         }
 
         MessageBatch(MessageBatch &&other) noexcept {
@@ -54,8 +56,7 @@ namespace gazellemq::server {
     public:
         /**
          * Tries to append the passed in chars. Returns false if the chars cannot fit in the remaining buffer space.
-         * @param chars
-         * @param len
+         * @param message
          * @return
          */
         bool append(std::string&& message) {
@@ -66,8 +67,8 @@ namespace gazellemq::server {
             if (message.size() + bufferLength > maxLength) {
                 size_t byteSize{static_cast<size_t>((std::ceil(static_cast<double>(maxLength + message.size()) / DEFAULT_BUF_LENGTH) * DEFAULT_BUF_LENGTH))};
                 buffer = (buffer == nullptr)
-                    ? (char *) calloc(byteSize, SIZEOF_CHAR)
-                    : (char *) realloc(buffer, byteSize);
+                    ? static_cast<char *>(calloc(byteSize, SIZEOF_CHAR))
+                    : static_cast<char *>(realloc(buffer, byteSize));
                 maxLength += message.size();
             }
 

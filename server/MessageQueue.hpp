@@ -3,7 +3,6 @@
 
 #include <condition_variable>
 #include "../lib/MPMCQueue/MPMCQueue.hpp"
-#include "Message.hpp"
 
 namespace gazellemq::server {
     class MessageQueue {
