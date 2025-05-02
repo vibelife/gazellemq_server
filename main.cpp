@@ -9,6 +9,9 @@ int main() {
     PublisherServer publisherServer{5876};
     publisherServer.start();
 
+    CommandServer commandServer{5877, &subscriberServer};
+    commandServer.start();
+
     std::latch{1}.wait();
     return 0;
 }

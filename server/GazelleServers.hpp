@@ -77,6 +77,10 @@ namespace gazellemq::server {
             std::swap(this->clientName, other.clientName);
         }
     public:
+        std::string getClientName() const {
+            return clientName;
+        }
+
         [[nodiscard]] virtual bool getIsDisconnected() const = 0;
         virtual void markForRemoval() = 0;
 
@@ -235,7 +239,7 @@ namespace gazellemq::server {
          * @param ring
          * @param res
          */
-        void onReceiveNameComplete(struct io_uring *ring, int res) {
+        void onReceiveNameComplete(struct io_uring *ring, const int res) {
             if (res == 0) {
                 // no data received
             } else if (res < 0) {
@@ -276,7 +280,7 @@ namespace gazellemq::server {
     };
 
 
-    class PublisherHandler : public PubSubHandler {
+    class PublisherHandler final : public PubSubHandler {
     private:
         std::string writeBuffer{};
         std::string nextBatch{};
@@ -615,10 +619,28 @@ namespace gazellemq::server {
                 subscriptionsBuffer.append(readBuffer, strlen(readBuffer));
                 if (subscriptionsBuffer.ends_with('\r')) {
                     subscriptionsBuffer.erase(subscriptionsBuffer.size() - 1, 1);
-                    gazellemq::utils::split(std::move(subscriptionsBuffer), subscriptions);
+                    addSubscriptions(subscriptionsBuffer);
                     event = Enums::Event_Ready;
                 } else {
                     beginReceiveSubscriptions(ring);
+                }
+            }
+        }
+
+        /**
+         * Adds subscriptions to the list, but only ones that do not already exist
+         * @param subscriptionsCsv
+         */
+        void addSubscriptions(std::string const& subscriptionsCsv) {
+            std::vector<std::string> subscriptionValues;
+            gazellemq::utils::split(std::string(subscriptionsCsv), subscriptionValues);
+
+            // add each subscription that does not already exist
+            for (std::string const& subscriptionValue : subscriptionValues) {
+                if (std::ranges::none_of(subscriptions, [subscriptionValue](std::string const& o) {
+                    return o == subscriptionValue;
+                })) {
+                    subscriptions.push_back(subscriptionValue);
                 }
             }
         }
@@ -692,7 +714,6 @@ namespace gazellemq::server {
             }
         }
     };
-
 
     template <typename T>
     class BaseServer : public BaseObject {
@@ -884,7 +905,12 @@ namespace gazellemq::server {
                 doEventLoop(&ring);
             }};
         }
+
+        std::vector<T*> getClients() {
+            return clients;
+        }
     };
+
 
 
     class SubscriberServer : public BaseServer<SubscriberHandler> {
@@ -907,7 +933,7 @@ namespace gazellemq::server {
             bool retVal {false};
             while (q.try_pop(batch)) {
                 retVal = true;
-                std::for_each(clients.begin(), clients.end(), [&batch, &ring](SubscriberHandler* subscriber) {
+                std::ranges::for_each(clients, [&batch, &ring](SubscriberHandler* subscriber) {
                     if (subscriber->isSubscribed(batch.getMessageType())) {
                         subscriber->pushMessageBatch(ring, batch);
                     }
@@ -1019,7 +1045,6 @@ namespace gazellemq::server {
         }
     };
 
-
     class PublisherServer : public BaseServer<PublisherHandler> {
     public:
         PublisherServer(int const port)
@@ -1091,5 +1116,206 @@ namespace gazellemq::server {
             }
         }
     };
+
+    class CommandHandler final : public PubSubHandler {
+    private:
+        bool isNew{true};
+        bool isDisconnected{false};
+        std::string command;
+        SubscriberServer* subscriberServer{};
+    public:
+        explicit CommandHandler(int const fd) :
+            PubSubHandler(fd)
+        {}
+
+        ~CommandHandler() override = default;
+
+        void printHello() override {
+            std::cout << "Commander connected" << std::endl;
+        }
+    protected:
+        void afterSendAckComplete(struct io_uring *ring) override {
+            beginReceiveData(ring);
+        }
+
+        void onDisconnected (int res) override {
+            std::cout << "Publisher disconnected [" << clientName << "]\n";
+            markForRemoval();
+        }
+    public:
+        void setSubscriberServer(SubscriberServer* subscriber) {
+            this->subscriberServer = subscriber;
+        }
+
+        [[nodiscard]] bool getIsDisconnected() const override {
+            return isDisconnected;
+        }
+
+        void markForRemoval() override {
+            isDisconnected = true;
+        }
+
+        [[nodiscard]] bool getIsNew() const override {
+            return isNew;
+        }
+
+        void setIsNew(bool b) override {
+            isNew = b;
+        }
+
+        void beginReceiveData(struct io_uring* ring) {
+            memset(readBuffer, 0, MAX_READ_BUF);
+            io_uring_sqe* sqe = io_uring_get_sqe(ring);
+            io_uring_prep_recv(sqe, fd, readBuffer, MAX_READ_BUF, 0);
+            io_uring_sqe_set_data(sqe, this);
+
+            event = Enums::Event_ReceivePublisherData;
+            io_uring_submit(ring);
+        }
+
+        /**
+         * Checks if we are done receiving data
+         * @param ring
+         * @param res
+         */
+        void onReceiveDataComplete(struct io_uring *ring, int res) {
+            if (res <= 0) {
+                // The client has disconnected
+                beginDisconnect(ring);
+            } else {
+                command.append(readBuffer, res);
+
+                // check if the command is complete
+                if (command.ends_with("\r")) {
+                    command.erase(command.size() - 1, 1);
+
+                    // process command
+                    processCommand(command);
+                    beginSendAck(ring);
+                } else {
+                    beginReceiveData(ring);
+                }
+            }
+        }
+
+
+
+        void processCommand(std::string& command) {
+            std::vector<std::string> values;
+            utils::split(std::string{command}, values, '|');
+
+            if (values.size() == 3) {
+                std::string name{values.at(0)};
+                const std::string type{values.at(1)};
+                std::string value{values.at(2)};
+
+                if (type == "subscribe") {
+                    addSubscription(std::move(name), std::move(value));
+                }
+            } else {
+                std::cerr << "Invalid command (" << command << ")" << std::endl;
+            }
+
+
+            command.clear();
+        }
+
+        void addSubscription(std::string &&name, std::string &&subscriptions) {
+            for (SubscriberHandler *client : subscriberServer->getClients()) {
+                if (client->getClientName() == name) {
+                    client->addSubscriptions(subscriptions);
+                }
+            }
+        }
+    public:
+        void handle(struct io_uring *ring, int res) override {
+            if (getIsDisconnected()) return;
+
+            switch (event) {
+                case Enums::Event_ReceivePublisherData:
+                    onReceiveDataComplete(ring, res);
+                break;
+                default:
+                    break;
+            }
+        }
+    };
+
+    class CommandServer: public BaseServer<CommandHandler> {
+    private:
+        SubscriberServer* subscriberServer{};
+    public:
+        CommandServer(int const port, SubscriberServer* subscriberServer)
+            : BaseServer<CommandHandler>(port),
+            subscriberServer(subscriberServer)
+        {}
+    protected:
+        void printHello() override {
+            std::cout << "Command server started [port " << port << "]" <<std::endl;
+        }
+
+        void afterConnectionAccepted(struct io_uring *ring, CommandHandler* connection) override {
+            connection->setSubscriberServer(this->subscriberServer);
+            connection->handleEvent(ring, epfd);
+        }
+
+        void eventLoop(io_uring* ring, std::vector<io_uring_cqe*>& cqes, __kernel_timespec& ts) {
+            int ret = io_uring_wait_cqe_timeout(ring, cqes.data(), &ts);
+            if (ret == -SIGILL || ret == TIMEOUT) {
+                return;
+            }
+
+            if (ret < 0) {
+                printError("io_uring_wait_cqe_timeout(...)", ret);
+                exit(0);
+            }
+
+            std::for_each(cqes.begin(), cqes.end(), [&ring](io_uring_cqe* cqe) {
+                if (cqe != nullptr) {
+                    int res = cqe->res;
+                    if (res != -EAGAIN) {
+                        auto *pSubscriber = static_cast<BaseObject *>(io_uring_cqe_get_data(cqe));
+                        pSubscriber->handleEvent(ring, res);
+                    }
+                    io_uring_cqe_seen(ring, cqe);
+                }
+            });
+        }
+
+        void doEventLoop(io_uring* ring) override {
+            constexpr static size_t NB_EVENTS = 32;
+
+            std::vector<io_uring_cqe*> cqes{};
+            cqes.reserve(NB_EVENTS);
+            cqes.insert(cqes.begin(), NB_EVENTS, nullptr);
+
+            __kernel_timespec ts{.tv_sec = 1, .tv_nsec = 0};
+
+            auto& q = getMessageQueue();
+
+            while (q.isRunning.test()) {
+                eventLoop(ring, cqes, ts);
+
+                removeDisconnectedClients();
+            }
+        }
+
+        void handleEvent(struct io_uring *ring, int res) override {
+            switch (event) {
+                case Enums::Event::Event_NotSet:
+                    beginSetupListenerSocket(ring);
+                    break;
+                case Enums::Event::Event_SetupPublisherListeningSocket:
+                    onSetupListeningSocketComplete(ring, res);
+                    break;
+                case Enums::Event::Event_AcceptPublisherConnection:
+                    onAcceptConnectionComplete(ring, res);
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
+
 }
 #endif //GAZELLEMQ_SERVER_GAZELLESERVERS_HPP

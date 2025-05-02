@@ -9,14 +9,16 @@ namespace gazellemq::utils {
     /**
      * Splits a string
      * @param input
+     * @param strings
+     * @param delimiter
      * @return
      */
-    void split(std::string &&input, std::vector<std::string>& strings, std::string &&prefix = "", char delimiter = ',') {
+    inline void split(std::string &&input, std::vector<std::string>& strings, char const delimiter = ',') {
         std::string buf;
         buf.reserve(input.size());
 
         for (size_t i{}; i < input.size(); ++i) {
-            if (input[i] != ',') {
+            if (input[i] != delimiter) {
                 buf.push_back(input[i]);
             } else {
                 strings.push_back(std::move(std::string{buf}));
