@@ -576,7 +576,8 @@ namespace gazellemq::server {
 
         void afterSendAckComplete(struct io_uring *ring) override {
             memset(readBuffer, 0, MAX_READ_BUF);
-            beginReceiveSubscriptions(ring);
+            // beginReceiveSubscriptions(ring);
+            event = Enums::Event_Ready;
         }
 
         void handle(struct io_uring *ring, int res) override {
@@ -641,6 +642,7 @@ namespace gazellemq::server {
                     return o == subscriptionValue;
                 })) {
                     subscriptions.push_back(subscriptionValue);
+                    std::cout << "New subscription | " << clientName << " - " << subscriptionValue << std::endl;
                 }
             }
         }
@@ -1131,7 +1133,7 @@ namespace gazellemq::server {
         ~CommandHandler() override = default;
 
         void printHello() override {
-            std::cout << "Commander connected" << std::endl;
+            std::cout << "A Commander connected" << std::endl;
         }
     protected:
         void afterSendAckComplete(struct io_uring *ring) override {
@@ -1200,29 +1202,33 @@ namespace gazellemq::server {
 
 
 
-        void processCommand(std::string& command) {
-            std::vector<std::string> values;
-            utils::split(std::string{command}, values, '|');
+        void processCommand(std::string& commands) const {
+            std::vector<std::string> commandValues;
+            utils::split(std::string{commands}, commandValues, '\r');
 
-            if (values.size() == 3) {
-                std::string name{values.at(0)};
-                const std::string type{values.at(1)};
-                std::string value{values.at(2)};
+            for (std::string const& command : commandValues) {
+                std::vector<std::string> values;
+                utils::split(std::string{command}, values, '|');
 
-                if (type == "subscribe") {
-                    addSubscription(std::move(name), std::move(value));
+                if (values.size() == 3) {
+                    std::string name{values.at(0)};
+                    std::string type{values.at(1)};
+                    std::string value{values.at(2)};
+
+                    if (type == "subscribe") {
+                        addSubscription(std::move(name), std::move(value));
+                    }
+                } else {
+                    std::cerr << "Invalid command (" << command << ")" << std::endl;
                 }
-            } else {
-                std::cerr << "Invalid command (" << command << ")" << std::endl;
             }
 
-
-            command.clear();
+            commands.clear();
         }
 
-        void addSubscription(std::string &&name, std::string &&subscriptions) {
+        void addSubscription(std::string &&name, std::string &&subscriptions) const {
             for (SubscriberHandler *client : subscriberServer->getClients()) {
-                if (client->getClientName() == name) {
+                if ((client->getClientName() == name) && (!client->getIsDisconnected())) {
                     client->addSubscriptions(subscriptions);
                 }
             }
