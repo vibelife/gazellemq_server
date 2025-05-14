@@ -3,13 +3,16 @@
 
 int main() {
     using namespace gazellemq::server;
-    SubscriberServer subscriberServer{5875};
+
+    ServerContext serverContext;
+
+    SubscriberServer subscriberServer{5875, &serverContext};
     subscriberServer.start();
 
-    PublisherServer publisherServer{5876};
+    PublisherServer publisherServer{5876, &serverContext};
     publisherServer.start();
 
-    CommandServer commandServer{5877, &subscriberServer};
+    CommandServer commandServer{5877, &subscriberServer, &serverContext};
     commandServer.start();
 
     std::latch{1}.wait();

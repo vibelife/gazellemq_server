@@ -14,6 +14,7 @@
 #include "MessageBatch.hpp"
 #include "MessageQueue.hpp"
 #include "StringUtils.hpp"
+#include "ServerContext.hpp"
 #include "../lib/MPMCQueue/MPMCQueue.hpp"
 
 namespace gazellemq::server {
@@ -50,9 +51,10 @@ namespace gazellemq::server {
         std::string intent{};
         Enums::Event event{Enums::Event::Event_NotSet};
         std::string clientName{};
+        ServerContext* serverContext{nullptr};
     public:
-        explicit PubSubHandler(int res)
-                :fd(res)
+        explicit PubSubHandler(int res, ServerContext* serverContext)
+                :fd(res), serverContext(serverContext)
         {}
 
         ~PubSubHandler() override = default;
@@ -96,7 +98,6 @@ namespace gazellemq::server {
 
             switch (event) {
                 case Enums::Event::Event_NotSet:
-                    printHello();
                     beginMakeNonblockingSocket(ring, res);
                     break;
                 case Enums::Event::Event_SetNonblockingPublisher:
@@ -251,7 +252,7 @@ namespace gazellemq::server {
                     clientName.erase(clientName.size() - 1, 1);
                     appendId("_");
                     appendId(clientName);
-
+                    printHello();
                     beginSendAck(ring);
                 } else {
                     beginReceiveName(ring);
@@ -307,13 +308,17 @@ namespace gazellemq::server {
         bool isNew{true};
         bool isDisconnected{false};
     public:
-        explicit PublisherHandler(int res)
+        explicit PublisherHandler(int res, ServerContext* serverContext)
                 : queue(32),
                   messageBatchSize(1),
-                  PubSubHandler(res)
+                  PubSubHandler(res, serverContext)
         {}
 
-        PublisherHandler(PublisherHandler&& other) noexcept: queue(32), messageBatchSize(1), PubSubHandler(other.fd) {
+        PublisherHandler(PublisherHandler&& other) noexcept:
+            PubSubHandler(other.fd, other.serverContext),
+            queue(32),
+            messageBatchSize(1)
+        {
             swap(std::move(other));
         }
 
@@ -323,7 +328,7 @@ namespace gazellemq::server {
         }
 
         void printHello() override {
-            std::cout << "A Publisher has connected\n";
+            std::cout << clientName << " | a publisher has connected" << std::endl << std::flush;
         }
 
     private:
@@ -391,7 +396,7 @@ namespace gazellemq::server {
 
     private:
         void pushToQueue(MessageBatch&& batch) {
-            std::cout << "Pushing message: " << batch.getBufferRemaining() << "\n" << std::endl;
+            std::cout << "Pushing message to queue: " << batch.getBufferRemaining() << std::endl;
             getMessageQueue().push_back(std::move(batch));
         }
 
@@ -507,14 +512,16 @@ namespace gazellemq::server {
         bool isNew{true};
         bool isDisconnected{false};
     public:
-        explicit SubscriberHandler(int res)
-            : PubSubHandler(res)
+        explicit SubscriberHandler(int res, ServerContext* serverContext)
+            : PubSubHandler(res, serverContext)
         {}
 
         SubscriberHandler(SubscriberHandler const&) = delete;
         SubscriberHandler& operator=(SubscriberHandler const&) = delete;
 
-        SubscriberHandler(SubscriberHandler&& other) noexcept: PubSubHandler(other.fd) {
+        SubscriberHandler(SubscriberHandler&& other) noexcept:
+            PubSubHandler(other.fd, other.serverContext)
+        {
             swap(std::move(other));
         }
 
@@ -523,8 +530,12 @@ namespace gazellemq::server {
             return *this;
         }
 
+        void setServerContext(ServerContext* serverContext) {
+            this->serverContext = serverContext;
+        }
+
         void printHello() override {
-            std::cout << "A Subscriber has connected" << std::endl;
+            std::cout << clientName << " | a subscriber has connected" << std::endl << std::flush;
         }
 
         [[nodiscard]] bool getIsDisconnected() const override {
@@ -561,6 +572,7 @@ namespace gazellemq::server {
             std::swap(this->clientName, other.clientName);
             std::swap(this->isNew, other.isNew);
             std::swap(this->isDisconnected, other.isDisconnected);
+            std::swap(this->serverContext, other.serverContext);
         }
     public:
         /**
@@ -578,53 +590,22 @@ namespace gazellemq::server {
             memset(readBuffer, 0, MAX_READ_BUF);
             // beginReceiveSubscriptions(ring);
             event = Enums::Event_Ready;
+
+            // look for pending subscriptions
+            for (auto const& subscription : serverContext->takePendingSubscriptions(clientName)) {
+                addSubscriptions(subscription);
+            }
         }
 
         void handle(struct io_uring *ring, int res) override {
             if (getIsDisconnected()) return;
 
             switch (event) {
-                case Enums::Event_ReceiveSubscriptions:
-                    onReceiveSubscriptionsComplete(ring, res);
-                    break;
                 case Enums::Event_SendData:
                     onSendCurrentMessageComplete(ring, res);
                     break;
                 default:
                     break;
-            }
-        }
-
-        /**
-         * Receives subscriptions from the subscriber
-         * @param ring
-         */
-        void beginReceiveSubscriptions(struct io_uring *ring) {
-            io_uring_sqe* sqe = io_uring_get_sqe(ring);
-            io_uring_prep_recv(sqe, fd, readBuffer, MAX_READ_BUF, 0);
-            io_uring_sqe_set_data(sqe, this);
-
-            event = Enums::Event_ReceiveSubscriptions;
-            io_uring_submit(ring);
-        }
-
-        /**
-         * Checks if we are done receiving data
-         * @param ring
-         * @param res
-         */
-        void onReceiveSubscriptionsComplete(struct io_uring *ring, int res) {
-            if (res < 0) {
-                beginDisconnect(ring);
-            } else {
-                subscriptionsBuffer.append(readBuffer, strlen(readBuffer));
-                if (subscriptionsBuffer.ends_with('\r')) {
-                    subscriptionsBuffer.erase(subscriptionsBuffer.size() - 1, 1);
-                    addSubscriptions(subscriptionsBuffer);
-                    event = Enums::Event_Ready;
-                } else {
-                    beginReceiveSubscriptions(ring);
-                }
             }
         }
 
@@ -641,8 +622,8 @@ namespace gazellemq::server {
                 if (std::ranges::none_of(subscriptions, [subscriptionValue](std::string const& o) {
                     return o == subscriptionValue;
                 })) {
+                    std::cout << "[" << clientName << "] adding subscription | " << subscriptionValue << std::endl << std::flush;
                     subscriptions.push_back(subscriptionValue);
-                    std::cout << "New subscription | " << clientName << " - " << subscriptionValue << std::endl;
                 }
             }
         }
@@ -731,9 +712,10 @@ namespace gazellemq::server {
         Enums::Event event{Enums::Event::Event_NotSet};
         unsigned int maxEventBatch{8};
         std::jthread bgThread;
+        ServerContext* serverContext;
     public:
-        explicit BaseServer(int port)
-            :port(port)
+        BaseServer(int const port, ServerContext* serverContext)
+            :port(port), serverContext(serverContext)
         {}
 
         ~BaseServer() override {
@@ -886,7 +868,7 @@ namespace gazellemq::server {
                 beginAcceptConnection(ring);
 
                 // A client has connected
-                auto client = new T{res};
+                auto client = new T{res, serverContext};
                 afterConnectionAccepted(ring, client);
                 clients.emplace_back(client);
             }
@@ -914,12 +896,11 @@ namespace gazellemq::server {
     };
 
 
-
     class SubscriberServer : public BaseServer<SubscriberHandler> {
     private:
     public:
-        SubscriberServer(int const port)
-            : BaseServer<SubscriberHandler>(port)
+        SubscriberServer(int const port, ServerContext* serverContext)
+            : BaseServer<SubscriberHandler>(port, serverContext)
         {}
     protected:
         void printHello() override {
@@ -927,6 +908,7 @@ namespace gazellemq::server {
         }
 
         void afterConnectionAccepted(struct io_uring *ring, SubscriberHandler* connection) override {
+            connection->setServerContext(serverContext);
             connection->handleEvent(ring, epfd);
         }
 
@@ -934,8 +916,7 @@ namespace gazellemq::server {
             MessageBatch batch;
             bool retVal {false};
             while (q.try_pop(batch)) {
-                retVal = true;
-                std::ranges::for_each(clients, [&batch, &ring](SubscriberHandler* subscriber) {
+                std::ranges::for_each(clients, [&](SubscriberHandler* subscriber) {
                     if (subscriber->isSubscribed(batch.getMessageType())) {
                         subscriber->pushMessageBatch(ring, batch);
                     }
@@ -1047,10 +1028,11 @@ namespace gazellemq::server {
         }
     };
 
+
     class PublisherServer : public BaseServer<PublisherHandler> {
     public:
-        PublisherServer(int const port)
-            : BaseServer<PublisherHandler>(port)
+        PublisherServer(int const port, ServerContext* serverContext)
+            : BaseServer<PublisherHandler>(port, serverContext)
         {}
     protected:
         void printHello() override {
@@ -1119,21 +1101,22 @@ namespace gazellemq::server {
         }
     };
 
+
     class CommandHandler final : public PubSubHandler {
     private:
         bool isNew{true};
         bool isDisconnected{false};
         std::string command;
-        SubscriberServer* subscriberServer{};
+        SubscriberServer* subscriberServer{nullptr};
     public:
-        explicit CommandHandler(int const fd) :
-            PubSubHandler(fd)
+        CommandHandler(int const fd, ServerContext* serverContext) :
+            PubSubHandler(fd, serverContext)
         {}
 
         ~CommandHandler() override = default;
 
         void printHello() override {
-            std::cout << "A Commander connected" << std::endl;
+            std::cout << clientName << " | a commander has connected" << std::endl << std::flush;
         }
     protected:
         void afterSendAckComplete(struct io_uring *ring) override {
@@ -1145,8 +1128,8 @@ namespace gazellemq::server {
             markForRemoval();
         }
     public:
-        void setSubscriberServer(SubscriberServer* subscriber) {
-            this->subscriberServer = subscriber;
+        void setSubscriberServer(SubscriberServer* subscriberServer) {
+            this->subscriberServer = subscriberServer;
         }
 
         [[nodiscard]] bool getIsDisconnected() const override {
@@ -1200,8 +1183,6 @@ namespace gazellemq::server {
             }
         }
 
-
-
         void processCommand(std::string& commands) const {
             std::vector<std::string> commandValues;
             utils::split(std::string{commands}, commandValues, '\r');
@@ -1227,10 +1208,17 @@ namespace gazellemq::server {
         }
 
         void addSubscription(std::string &&name, std::string &&subscriptions) const {
+            bool wasFound{false};
             for (SubscriberHandler *client : subscriberServer->getClients()) {
                 if ((client->getClientName() == name) && (!client->getIsDisconnected())) {
                     client->addSubscriptions(subscriptions);
+                    wasFound = true;
                 }
+            }
+
+            if (!wasFound) {
+                // to get here means the subscriber probably just hasn't connected yet
+                serverContext->addPendingSubscriptions(std::move(name), std::move(subscriptions));
             }
         }
     public:
@@ -1249,11 +1237,10 @@ namespace gazellemq::server {
 
     class CommandServer: public BaseServer<CommandHandler> {
     private:
-        SubscriberServer* subscriberServer{};
+        SubscriberServer* subscriberServer;
     public:
-        CommandServer(int const port, SubscriberServer* subscriberServer)
-            : BaseServer<CommandHandler>(port),
-            subscriberServer(subscriberServer)
+        CommandServer(int const port, SubscriberServer* subscriberServer, ServerContext* serverContext)
+            : BaseServer<CommandHandler>(port, serverContext), subscriberServer(subscriberServer)
         {}
     protected:
         void printHello() override {
@@ -1261,7 +1248,7 @@ namespace gazellemq::server {
         }
 
         void afterConnectionAccepted(struct io_uring *ring, CommandHandler* connection) override {
-            connection->setSubscriberServer(this->subscriberServer);
+            connection->setSubscriberServer(subscriberServer);
             connection->handleEvent(ring, epfd);
         }
 
