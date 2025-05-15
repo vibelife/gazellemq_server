@@ -57,7 +57,7 @@ namespace gazellemq::server {
             }
         }
 
-        void handleEvent(struct io_uring *ring, int res) override {
+        void handleEvent(struct io_uring *ring, const int res) override {
             switch (event) {
                 case Enums::Event::Event_NotSet:
                     beginSetupListenerSocket(ring);

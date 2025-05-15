@@ -44,7 +44,7 @@ namespace gazellemq::server {
             return retVal;
         }
 
-        void eventLoop(io_uring* ring, std::vector<io_uring_cqe *>& cqes, __kernel_timespec& ts) {
+        static void eventLoop(io_uring* ring, std::vector<io_uring_cqe *>& cqes, __kernel_timespec& ts) {
             int ret = io_uring_wait_cqe_timeout(ring, cqes.data(), &ts);
             if (ret == -SIGILL) {
                 return;
@@ -120,7 +120,7 @@ namespace gazellemq::server {
             }
         }
 
-        void handleEvent(struct io_uring *ring, int res) override {
+        void handleEvent(struct io_uring *ring, const int res) override {
             switch (event) {
                 case Enums::Event::Event_NotSet:
                     beginSetupListenerSocket(ring);
