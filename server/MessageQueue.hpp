@@ -2,6 +2,8 @@
 #define GAZELLEMQ_SERVER_MESSAGEQUEUE_HPP
 
 #include <condition_variable>
+
+#include "MessageBatch.hpp"
 #include "../lib/MPMCQueue/MPMCQueue.hpp"
 
 namespace gazellemq::server {
@@ -14,10 +16,8 @@ namespace gazellemq::server {
         std::mutex mQueue;
         std::condition_variable cvQueue{};
         std::atomic_flag hasPendingData{false};
-
-        std::atomic_flag isRunning{true};
     public:
-        explicit MessageQueue(size_t messageQueueDepth)
+        explicit MessageQueue(const size_t messageQueueDepth)
             :messageQueue(messageQueueDepth)
         {}
     public:
