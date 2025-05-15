@@ -24,7 +24,7 @@ static void signalHandler(const int signal) {
     }
 }
 
-static void handleSignal(int sig) {
+static void handleSignal(const int sig) {
     struct sigaction sigIntHandler{};
     sigIntHandler.sa_handler = signalHandler;
     sigemptyset(&sigIntHandler.sa_mask);
