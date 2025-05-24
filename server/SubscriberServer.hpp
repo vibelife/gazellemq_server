@@ -46,17 +46,13 @@ namespace gazellemq::server {
 
         static void eventLoop(io_uring* ring, std::vector<io_uring_cqe *>& cqes, __kernel_timespec& ts) {
             int ret = io_uring_wait_cqe_timeout(ring, cqes.data(), &ts);
-            if (ret == -SIGILL) {
+            if (ret == -SIGILL || ret == TIMEOUT) {
                 return;
             }
 
             if (ret < 0) {
-                if (ret == TIMEOUT) {
-                    return;
-                } else {
-                    printError("io_uring_wait_cqe_timeout(...)", ret);
-                    return;
-                }
+                printError("io_uring_wait_cqe_timeout(...)", ret);
+                return;
             }
 
             for (auto* cqe: cqes) {
@@ -91,7 +87,7 @@ namespace gazellemq::server {
 
             while (isRunning.test()) {
                 while (isRunning.test()) {
-
+                    // for the most part, this loop will handle new connections
                     eventLoop(ring, cqes, ts);
 
                     // if is nothing left to do then break
@@ -101,7 +97,7 @@ namespace gazellemq::server {
                 }
 
                 while (isRunning.test()) {
-                    // wait with a timeout for new messages
+                    // for most part, this loop will handle the sending of messages
                     std::unique_lock uniqueLock{q.mQueue};
                     const bool didTimeout{!q.cvQueue.wait_for(uniqueLock, 1s, [&]() { return q.hasPendingData.test(); })};
 
