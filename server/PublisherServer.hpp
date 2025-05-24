@@ -4,17 +4,22 @@
 #include "PublisherHandler.hpp"
 
 namespace gazellemq::server {
-    class PublisherServer final : public BaseServer<PublisherHandler> {
+    class PublisherServer final : public BaseServer {
     public:
-        PublisherServer(int const port, ServerContext* serverContext, std::atomic_flag& isRunning)
-            : BaseServer<PublisherHandler>(port, serverContext, isRunning)
+        PublisherServer(
+                int const port,
+                ServerContext* serverContext,
+                std::atomic_flag& isRunning,
+                std::function<PubSubHandler* (int, ServerContext*)>&& createFn
+                )
+            : BaseServer(port, serverContext, isRunning, std::move(createFn))
         {}
     protected:
         void printHello() override {
             std::cout << "Publisher server started [port " << port << "]" <<std::endl;
         }
 
-        void afterConnectionAccepted(struct io_uring *ring, PublisherHandler* connection) override {
+        void afterConnectionAccepted(struct io_uring *ring, PubSubHandler* connection) override {
             connection->handleEvent(ring, epfd);
         }
 

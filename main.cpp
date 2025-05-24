@@ -38,13 +38,19 @@ int main() {
 
     ServerContext serverContext;
 
-    SubscriberServer subscriberServer{5875, &serverContext, isRunning};
+    SubscriberServer subscriberServer{5875, &serverContext, isRunning, [](int res, ServerContext* context) {
+        return new SubscriberHandler{res, context};
+    }};
     subscriberServer.start();
 
-    PublisherServer publisherServer{5876, &serverContext, isRunning};
+    PublisherServer publisherServer{5876, &serverContext, isRunning, [](int res, ServerContext* context) {
+        return new PublisherHandler{res, context};
+    }};
     publisherServer.start();
 
-    CommandServer commandServer{5877, &subscriberServer, &serverContext, isRunning};
+    CommandServer commandServer{5877, &subscriberServer, &serverContext, isRunning, [](int res, ServerContext* context) {
+        return new CommandHandler{res, context};
+    }};
     commandServer.start();
 
     latch.wait();

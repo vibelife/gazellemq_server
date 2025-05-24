@@ -4,7 +4,7 @@
 #include "CommandHandler.hpp"
 
 namespace gazellemq::server {
-    class CommandServer final : public BaseServer<CommandHandler> {
+    class CommandServer final : public BaseServer {
     private:
         SubscriberServer* subscriberServer;
     public:
@@ -12,8 +12,9 @@ namespace gazellemq::server {
             int const port,
             SubscriberServer* subscriberServer,
             ServerContext* serverContext,
-            std::atomic_flag& isRunning
-        ) : BaseServer<CommandHandler>(port, serverContext, isRunning),
+            std::atomic_flag& isRunning,
+            std::function<PubSubHandler* (int, ServerContext*)>&& createFn
+        ) : BaseServer(port, serverContext, isRunning, std::move(createFn)),
             subscriberServer(subscriberServer)
         {}
     protected:
@@ -21,7 +22,8 @@ namespace gazellemq::server {
             std::cout << "Command server started [port " << port << "]" <<std::endl;
         }
 
-        void afterConnectionAccepted(struct io_uring *ring, CommandHandler* connection) override {
+        void afterConnectionAccepted(struct io_uring *ring, PubSubHandler* pubSubHandler) override {
+            auto connection = dynamic_cast<CommandHandler*>(pubSubHandler);
             connection->setSubscriberServer(subscriberServer);
             connection->handleEvent(ring, epfd);
         }

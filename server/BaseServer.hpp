@@ -5,14 +5,16 @@
 #include <vector>
 #include <netinet/in.h>
 #include <sys/epoll.h>
+#include <algorithm>
+#include <functional>
 
 #include "BaseObject.hpp"
+#include "PubSubHandler.hpp"
 #include "Enums.hpp"
 
 namespace gazellemq::server {
     class ServerContext;
 
-    template <typename T>
     class BaseServer : public BaseObject {
     protected:
         static constexpr auto TIMEOUT = -62;
@@ -22,15 +24,21 @@ namespace gazellemq::server {
         int epfd{};
         struct sockaddr_in clientAddr{};
         socklen_t clientAddrLen = sizeof(clientAddr);
-        std::vector<T*> clients{};
+        std::vector<PubSubHandler*> clients{};
         Enums::Event event{Enums::Event::Event_NotSet};
         unsigned int maxEventBatch{8};
         std::jthread bgThread;
         ServerContext* serverContext{};
         std::atomic_flag& isRunning;
+        std::function<PubSubHandler* (int, ServerContext*)> createHandlerFn{};
     public:
-        BaseServer(int const port, ServerContext* serverContext, std::atomic_flag& isRunning)
-            :port(port), serverContext(serverContext), isRunning(isRunning)
+        BaseServer(
+                int const port,
+                ServerContext* serverContext,
+                std::atomic_flag& isRunning,
+                std::function<PubSubHandler* (int, ServerContext*)>&& createFn
+            )
+            :port(port), serverContext(serverContext), isRunning(isRunning), createHandlerFn(std::move(createFn))
         {}
 
         ~BaseServer() override {
@@ -48,13 +56,13 @@ namespace gazellemq::server {
         }
 
         [[nodiscard]] bool anyNew() const {
-            return std::any_of(clients.begin(), clients.end(), [](T const& o) {
-                return o.getIsNew();
+            return std::any_of(clients.begin(), clients.end(), [](PubSubHandler const* o) {
+                return o->getIsNew();
             });
         }
 
         [[nodiscard]] bool allIdle() const {
-            return std::all_of(clients.begin(), clients.end(), [](T const* o) {
+            return std::all_of(clients.begin(), clients.end(), [](PubSubHandler const* o) {
                 return o->getIsIdle();
             });
         }
@@ -161,7 +169,7 @@ namespace gazellemq::server {
                 beginAcceptConnection(ring);
 
                 // A client has connected
-                auto client = new T{res, serverContext};
+                auto client = createHandlerFn(res, serverContext);
                 clients.emplace_back(client);
                 afterConnectionAccepted(ring, client);
             }
@@ -169,7 +177,7 @@ namespace gazellemq::server {
 
         virtual void printHello() = 0;
 
-        virtual void afterConnectionAccepted(struct io_uring *ring, T* connection) = 0;
+        virtual void afterConnectionAccepted(struct io_uring *ring, PubSubHandler* connection) = 0;
 
         virtual void doEventLoop(io_uring* ring) = 0;
     public:
@@ -183,7 +191,7 @@ namespace gazellemq::server {
             }};
         }
 
-        std::vector<T*> getClients() {
+        std::vector<PubSubHandler*> getClients() {
             return clients;
         }
     };

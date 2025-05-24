@@ -5,18 +5,24 @@
 #include "SubscriberHandler.hpp"
 
 namespace gazellemq::server {
-    class SubscriberServer final : public BaseServer<SubscriberHandler> {
+    class SubscriberServer final : public BaseServer {
     private:
     public:
-        SubscriberServer(int const port, ServerContext* serverContext, std::atomic_flag& isRunning)
-            : BaseServer<SubscriberHandler>(port, serverContext, isRunning)
+        SubscriberServer(
+                int const port,
+                ServerContext* serverContext,
+                std::atomic_flag& isRunning,
+                std::function<PubSubHandler* (int, ServerContext*)>&& createFn
+                )
+            : BaseServer(port, serverContext, isRunning, std::move(createFn))
         {}
     protected:
         void printHello() override {
             std::cout << "Subscriber server started [port " << port << "]" <<std::endl;
         }
 
-        void afterConnectionAccepted(struct io_uring *ring, SubscriberHandler* connection) override {
+        void afterConnectionAccepted(struct io_uring *ring, PubSubHandler* pubSubHandler) override {
+            auto connection = dynamic_cast<SubscriberHandler*>(pubSubHandler);
             connection->setServerContext(serverContext);
             connection->handleEvent(ring, epfd);
         }
@@ -25,7 +31,8 @@ namespace gazellemq::server {
             MessageBatch batch;
             bool retVal {false};
             while (q.try_pop(batch)) {
-                std::ranges::for_each(clients, [&](SubscriberHandler* subscriber) {
+                std::ranges::for_each(clients, [&](PubSubHandler* pubSubHandler) {
+                    auto subscriber = dynamic_cast<SubscriberHandler*>(pubSubHandler);
                     if (subscriber->isSubscribed(batch.getMessageType())) {
                         subscriber->pushMessageBatch(ring, batch);
                     }

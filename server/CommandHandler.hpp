@@ -111,7 +111,8 @@ namespace gazellemq::server {
 
         void addSubscription(std::string &&name, std::string &&subscriptions) const {
             bool wasFound{false};
-            for (SubscriberHandler *client : subscriberServer->getClients()) {
+            for (PubSubHandler *pubSubHandler : subscriberServer->getClients()) {
+                auto client = dynamic_cast<SubscriberHandler*>(pubSubHandler);
                 if ((client->getClientName() == name) && (!client->getIsDisconnected())) {
                     client->addSubscriptions(subscriptions);
                     wasFound = true;
