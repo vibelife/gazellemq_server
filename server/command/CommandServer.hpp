@@ -1,6 +1,6 @@
 #ifndef COMMANDSERVER_HPP
 #define COMMANDSERVER_HPP
-#include "BaseServer.hpp"
+#include "../BaseServer.hpp"
 #include "CommandHandler.hpp"
 
 namespace gazellemq::server {

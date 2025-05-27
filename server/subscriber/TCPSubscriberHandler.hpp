@@ -3,13 +3,13 @@
 #include <list>
 #include <vector>
 
-#include "MessageBatch.hpp"
-#include "PubSubHandler.hpp"
-#include "StringUtils.hpp"
+#include "../MessageBatch.hpp"
+#include "../PubSubHandler.hpp"
+#include "../StringUtils.hpp"
 
 namespace gazellemq::server {
-    class SubscriberHandler final : public PubSubHandler {
-    private:
+    class TCPSubscriberHandler : public PubSubHandler {
+    protected:
         std::vector<std::string> subscriptions;
         std::string subscriptionsBuffer;
         std::list<MessageBatch> pendingItems;
@@ -17,7 +17,7 @@ namespace gazellemq::server {
         bool isNew{true};
         bool isDisconnected{false};
     public:
-        explicit SubscriberHandler(int res, ServerContext* serverContext)
+        TCPSubscriberHandler(int res, ServerContext* serverContext)
             : PubSubHandler(res, serverContext)
         {}
 

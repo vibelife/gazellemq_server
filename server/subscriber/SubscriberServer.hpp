@@ -1,8 +1,8 @@
 #ifndef SUBSCRIBERSERVER_HPP
 #define SUBSCRIBERSERVER_HPP
-#include "BaseServer.hpp"
-#include "MessageQueue.hpp"
-#include "SubscriberHandler.hpp"
+#include "../BaseServer.hpp"
+#include "../MessageQueue.hpp"
+#include "TCPSubscriberHandler.hpp"
 
 namespace gazellemq::server {
     class SubscriberServer final : public BaseServer {
@@ -22,7 +22,7 @@ namespace gazellemq::server {
         }
 
         void afterConnectionAccepted(struct io_uring *ring, PubSubHandler* pubSubHandler) override {
-            auto connection = dynamic_cast<SubscriberHandler*>(pubSubHandler);
+            auto connection = dynamic_cast<TCPSubscriberHandler*>(pubSubHandler);
             connection->setServerContext(serverContext);
             connection->handleEvent(ring, epfd);
         }
@@ -32,7 +32,7 @@ namespace gazellemq::server {
             bool retVal {false};
             while (q.try_pop(batch)) {
                 std::ranges::for_each(clients, [&](PubSubHandler* pubSubHandler) {
-                    auto subscriber = dynamic_cast<SubscriberHandler*>(pubSubHandler);
+                    auto subscriber = dynamic_cast<TCPSubscriberHandler*>(pubSubHandler);
                     if (subscriber->isSubscribed(batch.getMessageType())) {
                         subscriber->pushMessageBatch(ring, batch);
                     }

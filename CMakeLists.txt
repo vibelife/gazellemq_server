@@ -10,13 +10,15 @@ add_executable(${PROJECT_NAME} main.cpp lib/MPMCQueue/MPMCQueue.hpp server/Const
         server/ServerContext.hpp
         server/BaseObject.hpp
         server/PubSubHandler.hpp
-        server/PublisherHandler.hpp
-        server/SubscriberHandler.hpp
+        server/publisher/TCPPublisherHandler.hpp
+        server/subscriber/TCPSubscriberHandler.hpp
         server/BaseServer.hpp
-        server/SubscriberServer.hpp
-        server/PublisherServer.hpp
-        server/CommandServer.hpp
-        server/CommandHandler.hpp)
+        server/subscriber/SubscriberServer.hpp
+        server/publisher/PublisherServer.hpp
+        server/command/CommandServer.hpp
+        server/command/CommandHandler.hpp
+        server/subscriber/WSSubscriberHandler.hpp
+        server/publisher/WSPublisherHandler.hpp)
 
 find_package(PkgConfig REQUIRED)
 

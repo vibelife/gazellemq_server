@@ -1,8 +1,8 @@
 #include <latch>
 
-#include "server/CommandServer.hpp"
-#include "server/SubscriberServer.hpp"
-#include "server/PublisherServer.hpp"
+#include "server/command/CommandServer.hpp"
+#include "server/subscriber/SubscriberServer.hpp"
+#include "server/publisher/PublisherServer.hpp"
 
 using namespace gazellemq::server;
 
@@ -39,12 +39,12 @@ int main() {
     ServerContext serverContext;
 
     SubscriberServer subscriberServer{5875, &serverContext, isRunning, [](int res, ServerContext* context) {
-        return new SubscriberHandler{res, context};
+        return new TCPSubscriberHandler{res, context};
     }};
     subscriberServer.start();
 
     PublisherServer publisherServer{5876, &serverContext, isRunning, [](int res, ServerContext* context) {
-        return new PublisherHandler{res, context};
+        return new TCPPublisherHandler{res, context};
     }};
     publisherServer.start();
 

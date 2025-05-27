@@ -2,6 +2,12 @@
 #define GAZELLEMQ_ENUMS_HPP
 
 namespace gazellemq::server {
+    enum VResult {
+        V_SUCCEEDED,
+        V_RETRY,
+        V_FAILED,
+    };
+
     class Enums {
     public:
         enum Event {
@@ -18,6 +24,9 @@ namespace gazellemq::server {
             Event_ReceiveName,
             Event_SendData,
             Event_SendAck,
+
+            Event_ReceiveHttpUpgrade,
+            Event_SendWSHandshake
         };
     };
 }

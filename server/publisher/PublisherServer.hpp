@@ -1,7 +1,7 @@
 #ifndef PUBLISHERSERVER_HPP
 #define PUBLISHERSERVER_HPP
-#include "BaseServer.hpp"
-#include "PublisherHandler.hpp"
+#include "../BaseServer.hpp"
+#include "TCPPublisherHandler.hpp"
 
 namespace gazellemq::server {
     class PublisherServer final : public BaseServer {

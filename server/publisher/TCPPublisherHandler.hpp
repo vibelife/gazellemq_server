@@ -3,13 +3,13 @@
 
 #include <condition_variable>
 
-#include "MessageBatch.hpp"
-#include "MessageQueue.hpp"
-#include "../lib/MPMCQueue/MPMCQueue.hpp"
-#include "PubSubHandler.hpp"
+#include "../MessageBatch.hpp"
+#include "../MessageQueue.hpp"
+#include "../../lib/MPMCQueue/MPMCQueue.hpp"
+#include "../PubSubHandler.hpp"
 
 namespace gazellemq::server {
-    class PublisherHandler final : public PubSubHandler {
+    class TCPPublisherHandler final : public PubSubHandler {
     private:
         enum ParseState {
             ParseState_messageType,
@@ -36,7 +36,7 @@ namespace gazellemq::server {
         bool isNew{true};
         bool isDisconnected{false};
     public:
-        explicit PublisherHandler(const int res, ServerContext* serverContext)
+        explicit TCPPublisherHandler(const int res, ServerContext* serverContext)
                 : PubSubHandler(res, serverContext),
                   messageBatchSize(1),
                   queue(32)

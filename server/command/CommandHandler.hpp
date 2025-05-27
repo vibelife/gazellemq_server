@@ -1,7 +1,7 @@
 #ifndef COMMANDHANDLER_HPP
 #define COMMANDHANDLER_HPP
-#include "PubSubHandler.hpp"
-#include "SubscriberServer.hpp"
+#include "../PubSubHandler.hpp"
+#include "../subscriber/SubscriberServer.hpp"
 
 namespace gazellemq::server {
     class CommandHandler final : public PubSubHandler {
@@ -112,7 +112,7 @@ namespace gazellemq::server {
         void addSubscription(std::string &&name, std::string &&subscriptions) const {
             bool wasFound{false};
             for (PubSubHandler *pubSubHandler : subscriberServer->getClients()) {
-                auto client = dynamic_cast<SubscriberHandler*>(pubSubHandler);
+                auto client = dynamic_cast<TCPSubscriberHandler*>(pubSubHandler);
                 if ((client->getClientName() == name) && (!client->getIsDisconnected())) {
                     client->addSubscriptions(subscriptions);
                     wasFound = true;

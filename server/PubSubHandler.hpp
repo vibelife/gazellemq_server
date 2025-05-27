@@ -68,25 +68,25 @@ namespace gazellemq::server {
             switch (event) {
                 case Enums::Event::Event_NotSet:
                     beginMakeNonblockingSocket(ring, res);
-                break;
+                    break;
                 case Enums::Event::Event_SetNonblockingPublisher:
                     onMakeNonblockingSocketComplete(ring, res);
-                break;
+                    break;
                 case Enums::Event::Event_ReceiveIntent:
                     onIntentReceived(ring, res);
-                break;
+                    break;
                 case Enums::Event::Event_ReceiveName:
                     onReceiveNameComplete(ring, res);
-                break;
+                    break;
                 case Enums::Event::Event_SendAck:
                     onSendAckComplete(ring, res);
-                break;
+                    break;
                 case Enums::Event::Event_Disconnected:
                     onDisconnected(res);
-                break;
+                    break;
                 default:
                     handle(ring, res);
-                break;
+                    break;
             }
         }
     protected:
@@ -143,7 +143,7 @@ namespace gazellemq::server {
          * @param ring
          * @param res
          */
-        void onMakeNonblockingSocketComplete(struct io_uring* ring, int res) {
+        virtual void onMakeNonblockingSocketComplete(struct io_uring* ring, int res) {
             if (res < 0) {
                 printError(__PRETTY_FUNCTION__ , res);
                 beginDisconnect(ring);
