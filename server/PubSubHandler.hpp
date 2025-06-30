@@ -9,6 +9,7 @@
 #include "BaseObject.hpp"
 #include "Consts.hpp"
 #include "ServerContext.hpp"
+#include "TimeUtils.hpp"
 
 namespace gazellemq::server {
     class PubSubHandler : public BaseObject {
@@ -21,6 +22,7 @@ namespace gazellemq::server {
         Enums::Event event{Enums::Event::Event_NotSet};
         std::string clientName{};
         ServerContext* serverContext{nullptr};
+        bool isDisconnected{false};
     public:
         explicit PubSubHandler(int res, ServerContext* serverContext)
                 :fd(res), serverContext(serverContext)
@@ -46,14 +48,20 @@ namespace gazellemq::server {
             std::swap(this->intent, other.intent);
             std::swap(this->event, other.event);
             std::swap(this->clientName, other.clientName);
+            std::swap(this->isDisconnected, other.isDisconnected);
         }
     public:
         [[nodiscard]] std::string getClientName() const {
             return clientName;
         }
 
-        [[nodiscard]] virtual bool getIsDisconnected() const = 0;
-        virtual void markForRemoval() = 0;
+        [[nodiscard]] bool getIsDisconnected() const {
+            return isDisconnected;
+        }
+
+        void setDisconnected() {
+            isDisconnected = true;
+        };
 
         [[nodiscard]] virtual bool getIsNew() const = 0;
         virtual void setIsNew(bool) = 0;
@@ -116,7 +124,7 @@ namespace gazellemq::server {
 
         virtual void onDisconnected (int res) {
             std::cout << "Client disconnected\n";
-            markForRemoval();
+            setDisconnected();
         }
 
         /**

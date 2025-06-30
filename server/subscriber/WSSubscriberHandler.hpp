@@ -20,7 +20,7 @@ namespace gazellemq::server {
     protected:
         void onDisconnected (int res) override {
             std::cout << "WebSocket disconnected [" << clientName << "]\n";
-            markForRemoval();
+            setDisconnected();
         }
 
 

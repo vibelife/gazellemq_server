@@ -58,7 +58,7 @@ namespace gazellemq::server {
             while (isRunning.test()) {
                 eventLoop(ring, cqes, ts);
 
-                removeDisconnectedClients();
+                // removeDisconnectedClients();
             }
         }
 

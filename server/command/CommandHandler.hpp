@@ -7,7 +7,6 @@ namespace gazellemq::server {
     class CommandHandler final : public PubSubHandler {
     private:
         bool isNew{true};
-        bool isDisconnected{false};
         std::string command;
         SubscriberServer* subscriberServer{nullptr};
     public:
@@ -27,19 +26,11 @@ namespace gazellemq::server {
 
         void onDisconnected (int res) override {
             std::cout << "Publisher disconnected [" << clientName << "]\n";
-            markForRemoval();
+            setDisconnected();
         }
     public:
         void setSubscriberServer(SubscriberServer* subscriberServer) {
             this->subscriberServer = subscriberServer;
-        }
-
-        [[nodiscard]] bool getIsDisconnected() const override {
-            return isDisconnected;
-        }
-
-        void markForRemoval() override {
-            isDisconnected = true;
         }
 
         [[nodiscard]] bool getIsNew() const override {
@@ -93,13 +84,24 @@ namespace gazellemq::server {
                 std::vector<std::string> values;
                 utils::split(std::string{command}, values, '|');
 
-                if (values.size() == 3) {
+                if (values.size() == 4) {
                     std::string name{values.at(0)};
                     std::string type{values.at(1)};
                     std::string value{values.at(2)};
+                    unsigned long timeoutMs{0};
+
+                    try {
+                        timeoutMs = std::stoull(values.at(3));
+                    } catch (const std::invalid_argument& e) {
+                        timeoutMs = 0;
+                        std::cerr << "[" << clientName << "] " << e.what() << std::endl;
+                    } catch (const std::out_of_range& e) {
+                        timeoutMs = 0;
+                        std::cerr << "[" << clientName << "] " << e.what() << std::endl;
+                    }
 
                     if (type == "subscribe") {
-                        addSubscription(std::move(name), std::move(value));
+                        addSubscription(timeoutMs, std::move(name), std::move(value));
                     }
                 } else {
                     std::cerr << "Invalid command (" << command << ")" << std::endl;
@@ -109,19 +111,19 @@ namespace gazellemq::server {
             commands.clear();
         }
 
-        void addSubscription(std::string &&name, std::string &&subscriptions) const {
+        void addSubscription(unsigned long timeoutMs, std::string &&name, std::string &&subscriptions) const {
             bool wasFound{false};
             for (PubSubHandler *pubSubHandler : subscriberServer->getClients()) {
                 auto client = dynamic_cast<TCPSubscriberHandler*>(pubSubHandler);
                 if ((client->getClientName() == name) && (!client->getIsDisconnected())) {
-                    client->addSubscriptions(subscriptions);
+                    client->addSubscriptions(timeoutMs, subscriptions);
                     wasFound = true;
                 }
             }
 
             if (!wasFound) {
                 // to get here means the subscriber probably just hasn't connected yet
-                serverContext->addPendingSubscriptions(std::move(name), std::move(subscriptions));
+                serverContext->addPendingSubscriptions(timeoutMs, std::move(name), std::move(subscriptions));
             }
         }
     public:

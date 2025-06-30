@@ -34,7 +34,6 @@ namespace gazellemq::server {
         ParseState parseState{};
         rigtorp::MPMCQueue<std::string> queue;
         bool isNew{true};
-        bool isDisconnected{false};
     public:
         explicit TCPPublisherHandler(const int res, ServerContext* serverContext)
                 : PubSubHandler(res, serverContext),
@@ -64,17 +63,9 @@ namespace gazellemq::server {
 
         void onDisconnected (int res) override {
             std::cout << "Publisher disconnected [" << clientName << "]\n";
-            markForRemoval();
+            setDisconnected();
         }
     public:
-        [[nodiscard]] bool getIsDisconnected() const override {
-            return isDisconnected;
-        }
-
-        void markForRemoval() override {
-            isDisconnected = true;
-        }
-
         [[nodiscard]] bool getIsNew() const override {
             return isNew;
         }

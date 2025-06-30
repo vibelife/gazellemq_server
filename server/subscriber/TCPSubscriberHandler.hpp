@@ -9,13 +9,18 @@
 
 namespace gazellemq::server {
     class TCPSubscriberHandler : public PubSubHandler {
+    private:
+        struct SubscriptionData {
+            unsigned long timeout{};
+            unsigned long lastAction{};
+            bool timeoutExpired{};
+        };
     protected:
-        std::vector<std::string> subscriptions;
-        std::string subscriptionsBuffer;
+        std::unordered_map<std::string, SubscriptionData> subscriptions;
+        std::string buffer;
         std::list<MessageBatch> pendingItems;
         MessageBatch currentItem{};
         bool isNew{true};
-        bool isDisconnected{false};
     public:
         TCPSubscriberHandler(int res, ServerContext* serverContext)
             : PubSubHandler(res, serverContext)
@@ -29,14 +34,6 @@ namespace gazellemq::server {
             std::cout << clientName << " | a subscriber has connected" << std::endl << std::flush;
         }
 
-        [[nodiscard]] bool getIsDisconnected() const override {
-            return isDisconnected;
-        }
-
-        void markForRemoval() override {
-            isDisconnected = true;
-        }
-
         [[nodiscard]] bool getIsNew() const override {
             return isNew;
         }
@@ -45,34 +42,62 @@ namespace gazellemq::server {
             isNew = b;
         }
     protected:
+        void updateLastAction(std::string const& messageType) {
+            if (subscriptions.contains(messageType)) {
+                subscriptions.at(messageType).lastAction = nowToLong();
+            }
+        }
+
         void onDisconnected (int res) override {
             std::cout << "Subscriber disconnected [" << clientName << "]\n";
-            markForRemoval();
+            setDisconnected();
         }
     public:
+        /**
+         * Checks if any subscription has timed out
+         */
+        void handleTimeout() {
+            unsigned long now = nowToLong();
+            bool anyTimedOut = false;
+            std::ranges::for_each(subscriptions, [&](auto& item) {
+                if (item.second.timeout > 0 && ((now - item.second.lastAction) > item.second.timeout)) {
+                    std::cout << "[" << clientName << "] subscription timeout | " << item.second.timeout << "ms | " << item.first << std::endl;
+                    item.second.timeoutExpired = true;
+                    anyTimedOut = true;
+                }
+            });
+
+            if (anyTimedOut) {
+                std::erase_if(subscriptions, [&](auto& item) {
+                    return item.second.timeoutExpired;
+                });
+            }
+        }
+
         /**
          * Returns true if the passed in string is subscribed to by this subscriber.
          * @param messageType
          * @return
          */
         [[nodiscard]] bool isSubscribed(std::string_view messageType) const {
-            return std::any_of(subscriptions.begin(), subscriptions.end(), [messageType](std::string const& o) {
-                return o.starts_with(messageType);
+            return std::ranges::any_of(subscriptions, [messageType](auto const& o) {
+                return !o.second.timeoutExpired && o.first.starts_with(messageType);
             });
         }
 
-        void afterSendAckComplete(struct io_uring *ring) override {
+        void afterSendAckComplete(io_uring *ring) override {
             memset(readBuffer, 0, MAX_READ_BUF);
-            // beginReceiveSubscriptions(ring);
+            buffer.clear();
+
             event = Enums::Event_Ready;
 
             // look for pending subscriptions
             for (auto const& subscription : serverContext->takePendingSubscriptions(clientName)) {
-                addSubscriptions(subscription);
+                addSubscriptions(subscription.timeoutMs, subscription.subscription);
             }
         }
 
-        void handle(struct io_uring *ring, int res) override {
+        void handle(io_uring *ring, int res) override {
             if (getIsDisconnected()) return;
 
             switch (event) {
@@ -86,30 +111,32 @@ namespace gazellemq::server {
 
         /**
          * Adds subscriptions to the list, but only ones that do not already exist
+         * @param timeoutMs
          * @param subscriptionsCsv
          */
-        void addSubscriptions(std::string const& subscriptionsCsv) {
+        void addSubscriptions(unsigned long timeoutMs, std::string const& subscriptionsCsv) {
             std::vector<std::string> subscriptionValues;
-            gazellemq::utils::split(std::string(subscriptionsCsv), subscriptionValues);
+            utils::split(std::string(subscriptionsCsv), subscriptionValues);
 
             // add each subscription that does not already exist
             for (std::string const& subscriptionValue : subscriptionValues) {
-                if (std::ranges::none_of(subscriptions, [subscriptionValue](std::string const& o) {
-                    return o == subscriptionValue;
+                if (std::ranges::none_of(subscriptions, [subscriptionValue](auto const& o) {
+                    return o.first == subscriptionValue;
                 })) {
                     std::cout << "[" << clientName << "] adding subscription | " << subscriptionValue << std::endl << std::flush;
-                    subscriptions.push_back(subscriptionValue);
+                    subscriptions[subscriptionValue] = SubscriptionData{timeoutMs, nowToLong()};
                 }
             }
         }
-
 
         /**
          * Sends the data to the subscriber, or queues it to be sent later.
          * @param ring
          * @param batch
          */
-        void pushMessageBatch(struct io_uring *ring, MessageBatch const& batch) {
+        void pushMessageBatch(io_uring *ring, MessageBatch const& batch) {
+            updateLastAction(batch.getMessageType());
+
             if (!currentItem.hasContent()) {
                 currentItem.copy(batch);
                 sendCurrentMessage(ring);
@@ -118,7 +145,11 @@ namespace gazellemq::server {
             }
         }
 
-        void sendNextPendingMessageBatch(struct io_uring *ring) {
+        /**
+         * Sends the pending batch of messages
+         * @param ring
+         */
+        void sendNextPendingMessageBatch(io_uring *ring) {
             currentItem = std::move(pendingItems.front());
             pendingItems.pop_front();
 
@@ -132,7 +163,7 @@ namespace gazellemq::server {
          * Sends the remaining bytes to the endpoint
          * @param ring
          */
-        void sendCurrentMessage(struct io_uring *ring) {
+        void sendCurrentMessage(io_uring *ring) {
             io_uring_sqe* sqe = io_uring_get_sqe(ring);
             io_uring_prep_send(sqe, fd, currentItem.getBufferRemaining(), currentItem.getBufferLength(), 0);
 
@@ -147,7 +178,7 @@ namespace gazellemq::server {
          * @param res
          * @return
          */
-        void onSendCurrentMessageComplete(struct io_uring *ring, int res) {
+        void onSendCurrentMessageComplete(io_uring *ring, const int res) {
             if (res == 0) {
                 // do nothing here
                 std::cout << "possible disconnected subscriber\n";

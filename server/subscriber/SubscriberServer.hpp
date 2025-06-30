@@ -17,6 +17,12 @@ namespace gazellemq::server {
             : BaseServer(port, serverContext, isRunning, std::move(createFn))
         {}
     protected:
+        void handleTimeouts() const {
+            for (auto& client : clients) {
+                dynamic_cast<TCPSubscriberHandler*>(client)->handleTimeout();
+            }
+        }
+
         void printHello() override {
             std::cout << "Subscriber server started [port " << port << "]" <<std::endl;
         }
@@ -33,6 +39,8 @@ namespace gazellemq::server {
             while (q.try_pop(batch)) {
                 std::ranges::for_each(clients, [&](PubSubHandler* pubSubHandler) {
                     auto subscriber = dynamic_cast<TCPSubscriberHandler*>(pubSubHandler);
+                    if (subscriber->getIsDisconnected()) return;
+
                     if (subscriber->isSubscribed(batch.getMessageType())) {
                         subscriber->pushMessageBatch(ring, batch);
                     }
@@ -76,7 +84,7 @@ namespace gazellemq::server {
                 io_uring_cqe_seen(ring, cqe);
             }
 
-            removeDisconnectedClients();
+            // removeDisconnectedClients();
         }
 
         /**
@@ -96,6 +104,9 @@ namespace gazellemq::server {
                 while (isRunning.test()) {
                     // for the most part, this loop will handle new connections
                     eventLoop(ring, cqes, ts);
+
+                    // check if any clients have timed out
+                    handleTimeouts();
 
                     // if is nothing left to do then break
                     if (allIdle()) {

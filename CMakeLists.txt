@@ -18,7 +18,8 @@ add_executable(${PROJECT_NAME} main.cpp lib/MPMCQueue/MPMCQueue.hpp server/Const
         server/command/CommandServer.hpp
         server/command/CommandHandler.hpp
         server/subscriber/WSSubscriberHandler.hpp
-        server/publisher/WSPublisherHandler.hpp)
+        server/publisher/WSPublisherHandler.hpp
+        server/TimeUtils.hpp)
 
 find_package(PkgConfig REQUIRED)
 

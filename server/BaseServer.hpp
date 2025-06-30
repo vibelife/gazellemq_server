@@ -48,7 +48,9 @@ namespace gazellemq::server {
             }
         }
     protected:
-        static void removeDisconnectedClients() {
+        void removeDisconnectedClients() {
+            // TODO figure out why deleting disconnected clients eventually causes a segfault
+
             //clients.erase(
             //        std::remove_if(clients.begin(), clients.end(), [](T& o) {
             //            return !o.getIsNew() && o.getIsDisconnected();

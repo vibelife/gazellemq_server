@@ -20,6 +20,7 @@ namespace gazellemq::server {
             Event_ReceiveIntent,
             Event_Disconnected,
             Event_ReceivePublisherData,
+            Event_ReceiveTimeout,
             Event_ReceiveSubscriptions,
             Event_ReceiveName,
             Event_SendData,
